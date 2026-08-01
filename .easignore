@@ -1,0 +1,13 @@
+# Ignore admin web dashboard during Expo EAS build
+admin/
+
+# Ignore build artifacts and cache
+.next/
+.expo/
+dist/
+web-build/
+node_modules/
+
+# Ignore env files
+.env*.local
+.env

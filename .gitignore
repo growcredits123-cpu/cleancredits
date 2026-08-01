@@ -33,3 +33,10 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# next.js & build outputs
+.next/
+admin/.next/
+admin/node_modules/
+supabase/.temp/
+
