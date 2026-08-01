@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { LayoutDashboard, Coins, MapPin, ShieldAlert, Leaf } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'EcoSwap Admin',
-  description: 'Admin panel for EcoSwap marketplace',
+  title: 'GrowCredits Admin',
+  description: 'Admin panel for GrowCredits marketplace',
 };
 
 const nav = [
@@ -25,7 +25,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="w-8 h-8 rounded-lg bg-eco-500 flex items-center justify-center">
                 <Leaf className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg">EcoSwap</span>
+              <span className="font-bold text-lg">GrowCredits</span>
               <span className="text-xs text-gray-400 ml-1">Admin</span>
             </div>
             <nav className="flex-1 p-3 space-y-1">

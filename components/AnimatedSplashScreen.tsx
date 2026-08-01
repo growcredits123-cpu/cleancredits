@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,7 +9,6 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as SplashScreen from 'expo-splash-screen';
-import { Leaf } from 'lucide-react-native';
 import { theme } from '@/lib/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -59,9 +58,13 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
     <Animated.View style={[styles.container, containerStyle]}>
       <Animated.View style={[styles.logoContainer, logoStyle]}>
         <View style={styles.iconCircle}>
-          <Leaf size={64} color="#ffffff" strokeWidth={2.5} />
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={{ width: 110, height: 110, borderRadius: 28 }}
+            resizeMode="cover"
+          />
         </View>
-        <Animated.Text style={[styles.text, textStyle]}>EcoSwap</Animated.Text>
+        <Animated.Text style={[styles.text, textStyle]}>GrowCredits</Animated.Text>
       </Animated.View>
     </Animated.View>
   );

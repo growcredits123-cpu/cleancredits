@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
-import { Leaf } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 
@@ -39,10 +38,10 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.brand}>
             <View style={styles.logo}>
-              <Leaf size={36} color={theme.colors.neutral[0]} />
+              <Image source={require('@/assets/images/icon.png')} style={{ width: 72, height: 72, borderRadius: 36 }} resizeMode="cover" />
             </View>
-            <Text style={styles.title}>EcoSwap</Text>
-            <Text style={styles.subtitle}>Swap items, earn tokens, recycle locally.</Text>
+            <Text style={styles.title}>GrowCredits</Text>
+            <Text style={styles.subtitle}>Earn credits, exchange items, recycle locally.</Text>
           </View>
 
         <View style={styles.form}>
