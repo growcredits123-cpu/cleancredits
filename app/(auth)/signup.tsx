@@ -81,21 +81,6 @@ export default function SignupScreen() {
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Create account</Text>}
           </TouchableOpacity>
 
-          <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <View style={styles.oauthRow}>
-            <TouchableOpacity style={styles.oauthBtn} onPress={() => signInWithGoogle()}>
-              <Text style={styles.oauthText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.oauthBtn} onPress={() => signInWithApple()}>
-              <Text style={styles.oauthText}>Apple</Text>
-            </TouchableOpacity>
-          </View>
-
           <Link href="/(auth)/login" style={styles.link}>
             <Text style={styles.linkText}>
               Already have an account? <Text style={styles.linkBold}>Sign in</Text>

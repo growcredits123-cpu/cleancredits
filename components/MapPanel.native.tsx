@@ -1,8 +1,7 @@
-import React from 'react';
-import { Platform, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { Component } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '@/lib/theme';
 import type { Item } from '@/lib/types';
-
 import MapView, { Marker } from 'react-native-maps';
 
 interface MapPanelProps {
@@ -13,23 +12,55 @@ interface MapPanelProps {
   showsUserLocation?: boolean;
 }
 
+class MapErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn('Map rendering error:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.fallback}>
+          <Text style={styles.fallbackSubtext}>Map Preview</Text>
+          <Text style={styles.fallbackText}>Interactive map unavailable on this device.</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function MapPanel({ region, onRegionChange, items, onItemPress, showsUserLocation }: MapPanelProps) {
+  const validItems = (items || []).filter(
+    (item) =>
+      item &&
+      typeof item.lat === 'number' &&
+      typeof item.lng === 'number' &&
+      !isNaN(item.lat) &&
+      !isNaN(item.lng)
+  );
+
   return (
-    <MapView
-      style={{ flex: 1 }}
-      region={region}
-      onRegionChangeComplete={onRegionChange}
-      showsUserLocation={showsUserLocation}
-      showsMyLocationButton
-    >
-      {items.map((item: Item) => (
-        <Marker
-          key={item.id}
-          coordinate={{ latitude: item.lat, longitude: item.lng }}
-          onPress={() => onItemPress(item.id)}
-        />
-      ))}
-    </MapView>
+    <MapErrorBoundary>
+      <MapView
+        style={{ flex: 1 }}
+        region={region}
+        onRegionChangeComplete={onRegionChange}
+        showsUserLocation={showsUserLocation}
+        showsMyLocationButton
+      >
+        {validItems.map((item: Item) => (
+          <Marker
+            key={item.id}
+            coordinate={{ latitude: item.lat, longitude: item.lng }}
+            onPress={() => onItemPress(item.id)}
+          />
+        ))}
+      </MapView>
+    </MapErrorBoundary>
   );
 }
 

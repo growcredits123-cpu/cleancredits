@@ -23,118 +23,150 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(uid: string) {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', uid)
-      .maybeSingle();
-    if (error) {
-      console.warn('loadProfile error', error.message);
-    }
-    if (data) {
-      setProfile(data as User);
-    } else {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .maybeSingle();
+      if (error) {
+        console.warn('loadProfile error:', error.message);
+      }
+      if (data) {
+        setProfile(data as User);
+      } else {
+        setProfile({ id: uid, name: 'User', email: '', rating_avg: 0 } as User);
+      }
+    } catch (e) {
+      console.warn('loadProfile exception:', e);
       setProfile({ id: uid, name: 'User', email: '', rating_avg: 0 } as User);
+    }
+  }
+
+  async function ensureProfile(s: Session) {
+    try {
+      const uid = s.user.id;
+      const name =
+        (s.user.user_metadata?.full_name as string) ||
+        (s.user.user_metadata?.name as string) ||
+        (s.user.email ? s.user.email.split('@')[0] : 'User');
+      const avatarUrl = (s.user.user_metadata?.avatar_url as string) || null;
+
+      await supabase.from('users').upsert(
+        {
+          id: uid,
+          name,
+          email: s.user.email || '',
+          avatar_url: avatarUrl,
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+    } catch (e) {
+      console.warn('ensureProfile exception:', e);
     }
   }
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session) {
-        ensureProfile(data.session).then(() => {
-          if (!mounted) return;
-          loadProfile(data.session.user.id).finally(() => mounted && setLoading(false));
-        });
-      } else {
-        setLoading(false);
+    async function initAuth() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (error) console.warn('getSession error:', error.message);
+        const currentSession = data?.session || null;
+        setSession(currentSession);
+        if (currentSession) {
+          await ensureProfile(currentSession);
+          if (mounted) await loadProfile(currentSession.user.id);
+        }
+      } catch (err) {
+        console.warn('initAuth exception:', err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    });
+    }
+
+    initAuth();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      (async () => {
-        setSession(newSession);
-        if (newSession) {
-          await ensureProfile(newSession);
-          await loadProfile(newSession.user.id);
-        } else {
-          setProfile(null);
-        }
-      })();
+      if (!mounted) return;
+      setSession(newSession);
+      if (newSession) {
+        ensureProfile(newSession).then(() => {
+          if (mounted) loadProfile(newSession.user.id);
+        });
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      sub?.subscription?.unsubscribe();
     };
   }, []);
 
-  async function ensureProfile(s: Session) {
-    const uid = s.user.id;
-    const { data } = await supabase.from('users').select('id').eq('id', uid).maybeSingle();
-    if (!data) {
-      const name =
-        (s.user.user_metadata?.full_name as string) ||
-        (s.user.user_metadata?.name as string) ||
-        (s.user.email ? s.user.email.split('@')[0] : 'User');
-      const avatarUrl = (s.user.user_metadata?.avatar_url as string) || null;
-      await supabase.from('users').insert({
-        id: uid,
-        name,
-        email: s.user.email || '',
-        avatar_url: avatarUrl,
-      });
-    }
-  }
-
   async function signInWithEmail(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      if (data?.session) {
+        setSession(data.session);
+        await ensureProfile(data.session);
+        await loadProfile(data.session.user.id);
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: err?.message || 'Authentication failed.' };
+    }
   }
 
   async function signUpWithEmail(email: string, password: string, name: string) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } },
-    });
-    if (error) return { error: error.message };
-    if (data.user) {
-      const { error: insertError } = await supabase.from('users').insert({
-        id: data.user.id,
-        name,
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email,
+        password,
+        options: { data: { full_name: name } },
       });
-      if (insertError) {
-        console.error('Failed to create public user profile:', insertError.message);
-        return { error: 'Account created, but profile setup failed due to permissions.' };
+      if (error) return { error: error.message };
+      if (data?.user) {
+        await supabase.from('users').upsert(
+          {
+            id: data.user.id,
+            name,
+            email,
+          },
+          { onConflict: 'id' }
+        );
       }
+      if (data?.session) {
+        setSession(data.session);
+        await loadProfile(data.user!.id);
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: err?.message || 'Sign up failed.' };
     }
-    return { error: null };
   }
 
   async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: 'ecoswap://auth' },
-    });
-    return { error: error?.message ?? null };
+    return { error: 'OAuth login disabled.' };
   }
 
   async function signInWithApple() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
-      options: { redirectTo: 'ecoswap://auth' },
-    });
-    return { error: error?.message ?? null };
+    return { error: 'OAuth login disabled.' };
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('signOut exception:', e);
+    } finally {
+      setSession(null);
+      setProfile(null);
+    }
   }
 
   async function refreshProfile() {

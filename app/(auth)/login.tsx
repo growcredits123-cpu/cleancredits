@@ -74,21 +74,6 @@ export default function LoginScreen() {
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Sign in</Text>}
           </TouchableOpacity>
 
-          <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <View style={styles.oauthRow}>
-            <TouchableOpacity style={styles.oauthBtn} onPress={handleGoogle}>
-              <Text style={styles.oauthText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.oauthBtn} onPress={handleApple}>
-              <Text style={styles.oauthText}>Apple</Text>
-            </TouchableOpacity>
-          </View>
-
           <Link href="/(auth)/signup" style={styles.link}>
             <Text style={styles.linkText}>
               New here? <Text style={styles.linkBold}>Create an account</Text>
