@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Star, MapPin, ArrowLeft, Package, Trash2 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
@@ -73,17 +74,18 @@ export default function ItemDetailScreen() {
   const canRequest = !isOwner && item.status === 'available';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft size={22} color={theme.colors.text} />
-        </TouchableOpacity>
-        {isOwner && (
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
-            <Trash2 size={18} color={theme.colors.error} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={22} color={theme.colors.text} />
           </TouchableOpacity>
-        )}
-      </View>
+          {isOwner && (
+            <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
+              <Trash2 size={18} color={theme.colors.error} />
+            </TouchableOpacity>
+          )}
+        </View>
 
       <View style={styles.imageWrap}>
         {item.photo_url ? (
@@ -133,14 +135,15 @@ export default function ItemDetailScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  topBar: { position: 'absolute', top: 56, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   deleteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   imageWrap: { width: '100%', height: 300, backgroundColor: theme.colors.neutral[100] },

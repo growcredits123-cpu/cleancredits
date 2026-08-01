@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, MapPin, Tag, FileText } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
+import { decode } from 'base64-arraybuffer';
 
 export default function PostScreen() {
   const { session } = useAuth();
@@ -13,6 +15,7 @@ export default function PostScreen() {
   const [description, setDescription] = useState('');
   const [tokenPrice, setTokenPrice] = useState('1');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +32,11 @@ export default function PostScreen() {
       quality: 0.7,
       allowsEditing: true,
       aspect: [4, 3],
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
     }
   }
 
@@ -55,12 +60,11 @@ export default function PostScreen() {
 
     setBusy(true);
     try {
+      if (!imageBase64) throw new Error('Image data is missing.');
       const photoPath = `${session!.user.id}/${Date.now()}.jpg`;
-      const fileResp = await fetch(imageUri);
-      const blob = await fileResp.blob();
       const { error: upErr } = await supabase.storage
         .from('item-photos')
-        .upload(photoPath, blob, { contentType: 'image/jpeg', upsert: false });
+        .upload(photoPath, decode(imageBase64), { contentType: 'image/jpeg', upsert: false });
       if (upErr) throw new Error(upErr.message);
 
       const { data: pub } = supabase.storage.from('item-photos').getPublicUrl(photoPath);
@@ -83,6 +87,7 @@ export default function PostScreen() {
       setDescription('');
       setTokenPrice('1');
       setImageUri(null);
+      setImageBase64(null);
       setCoords(null);
       setTimeout(() => setSuccess(false), 2500);
     } catch (e) {
@@ -93,10 +98,11 @@ export default function PostScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Post an item</Text>
-        <Text style={styles.subtitle}>List something you no longer need for others to swap.</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>Post an item</Text>
+          <Text style={styles.subtitle}>List something you no longer need for others to swap.</Text>
 
         <TouchableOpacity style={styles.photoBox} onPress={pickImage}>
           {imageUri ? (
@@ -147,13 +153,14 @@ export default function PostScreen() {
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post item</Text>}
         </TouchableOpacity>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 40, paddingBottom: 40 },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   subtitle: { fontSize: 14, color: theme.colors.textMuted, marginTop: 4, marginBottom: 20, fontFamily: theme.fonts.regular },
   photoBox: { width: '100%', height: 200, borderRadius: theme.radius.lg, overflow: 'hidden', marginBottom: 20, backgroundColor: theme.colors.neutral[100] },

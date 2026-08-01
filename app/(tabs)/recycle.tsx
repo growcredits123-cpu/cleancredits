@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Platform, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, MapPin, Recycle, CheckCircle2, AlertTriangle } from 'lucide-react-native';
@@ -8,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 import { encodeGeohash } from '@/lib/geohash';
 import type { RecyclingSpot } from '@/lib/types';
+import { decode } from 'base64-arraybuffer';
 
 export default function RecycleScreen() {
   const { session } = useAuth();
@@ -15,6 +17,7 @@ export default function RecycleScreen() {
   const [loading, setLoading] = useState(true);
   const [reporting, setReporting] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +44,12 @@ export default function RecycleScreen() {
       quality: 0.7,
       allowsEditing: true,
       aspect: [4, 3],
+      base64: true,
     });
-    if (!result.canceled && result.assets[0]) setImageUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
+    }
   }
 
   async function captureLocation() {
@@ -77,12 +84,11 @@ export default function RecycleScreen() {
         return;
       }
 
+      if (!imageBase64) throw new Error('Image data is missing.');
       const photoPath = `${session.user.id}/${Date.now()}.jpg`;
-      const fileResp = await fetch(imageUri);
-      const blob = await fileResp.blob();
       const { error: upErr } = await supabase.storage
         .from('recycling-photos')
-        .upload(photoPath, blob, { contentType: 'image/jpeg', upsert: false });
+        .upload(photoPath, decode(imageBase64), { contentType: 'image/jpeg', upsert: false });
       if (upErr) throw new Error(upErr.message);
 
       const { data: pub } = supabase.storage.from('recycling-photos').getPublicUrl(photoPath);
@@ -100,6 +106,7 @@ export default function RecycleScreen() {
 
       setSuccess(true);
       setImageUri(null);
+      setImageBase64(null);
       setCoords(null);
       setTimeout(() => { setSuccess(false); setReporting(false); }, 2500);
     } catch (e) {
@@ -112,11 +119,12 @@ export default function RecycleScreen() {
   if (loading) return <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ flex: 1 }} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Recycling spots</Text>
-        <Text style={styles.subtitle}>Find drop-off points or report a new one to earn tokens.</Text>
-      </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Recycling spots</Text>
+          <Text style={styles.subtitle}>Find drop-off points or report a new one to earn tokens.</Text>
+        </View>
 
       {!reporting ? (
         <>
@@ -189,7 +197,7 @@ export default function RecycleScreen() {
           )}
 
           <View style={styles.formActions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setReporting(false); setImageUri(null); setCoords(null); setError(null); }}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setReporting(false); setImageUri(null); setImageBase64(null); setCoords(null); setError(null); }}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.submitBtn} onPress={submitReport} disabled={busy}>
@@ -199,12 +207,13 @@ export default function RecycleScreen() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 40, paddingBottom: 16, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   subtitle: { fontSize: 13, color: theme.colors.textMuted, marginTop: 4, fontFamily: theme.fonts.regular },
   reportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, margin: 16, backgroundColor: theme.colors.primary[500], paddingVertical: 14, borderRadius: theme.radius.md },

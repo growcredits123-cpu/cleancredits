@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { Leaf } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth';
@@ -30,15 +31,16 @@ export default function SignupScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.brand}>
-          <View style={styles.logo}>
-            <Leaf size={36} color={theme.colors.neutral[0]} />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <View style={styles.brand}>
+            <View style={styles.logo}>
+              <Leaf size={36} color={theme.colors.neutral[0]} />
+            </View>
+            <Text style={styles.title}>Join EcoSwap</Text>
+            <Text style={styles.subtitle}>Create an account to start swapping.</Text>
           </View>
-          <Text style={styles.title}>Join EcoSwap</Text>
-          <Text style={styles.subtitle}>Create an account to start swapping.</Text>
-        </View>
 
         <View style={styles.form}>
           <Text style={styles.label}>Name</Text>
@@ -102,7 +104,8 @@ export default function SignupScreen() {
           </Link>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

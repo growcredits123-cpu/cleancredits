@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { getAdminClient } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import { searchUsers, issueTokens } from '../actions';
 import { Search, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function IssueTokensForm() {
@@ -12,15 +13,11 @@ export default function IssueTokensForm() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const router = useRouter();
 
   async function search() {
     if (!query.trim()) return;
-    const adminSupabase = getAdminClient();
-    const { data } = await adminSupabase
-      .from('users')
-      .select('id, name, email, is_blocked')
-      .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
-      .limit(10);
+    const data = await searchUsers(query);
     setResults(data || []);
   }
 
@@ -29,15 +26,11 @@ export default function IssueTokensForm() {
     const amt = parseInt(amount, 10);
     if (!amt || amt <= 0) return setFeedback({ ok: false, msg: 'Enter a valid amount.' });
     setBusy(true);
-    const adminSupabase = getAdminClient();
-    const { error } = await adminSupabase.rpc('admin_issue_tokens', {
-      p_user_id: selected.id,
-      p_amount: amt,
-      p_note: note.trim() || null,
-    });
+    const res = await issueTokens(selected.id, amt, note.trim());
     setBusy(false);
-    if (error) return setFeedback({ ok: false, msg: error.message });
+    if (!res.ok) return setFeedback({ ok: false, msg: res.msg as string });
     setFeedback({ ok: true, msg: `Credited ${amt} ◆ to ${selected.name}.` });
+    router.refresh();
     setSelected(null);
     setQuery('');
     setResults([]);

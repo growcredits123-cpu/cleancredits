@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { RefreshCw, MapPin } from 'lucide-react-native';
@@ -26,10 +27,11 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadNearby = useCallback(async () => {
+  const loadNearby = useCallback(async (customRegion?: Region) => {
+    const fetchRegion = customRegion || region;
     setLoading(true);
     setError(null);
-    const { data, err } = await fetchItems(region);
+    const { data, err } = await fetchItems(fetchRegion);
     if (err) {
       setError(err);
     } else {
@@ -43,30 +45,28 @@ export default function MapScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setError('Location permission denied — showing default area.');
-        loadNearby();
+        loadNearby(DEFAULT_REGION);
         return;
       }
       try {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setRegion({
+        const newRegion = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
           latitudeDelta: 0.1,
           longitudeDelta: 0.1,
-        });
+        };
+        setRegion(newRegion);
+        loadNearby(newRegion);
       } catch {
         setError('Could not get your location.');
-        loadNearby();
+        loadNearby(DEFAULT_REGION);
       }
     })();
   }, []);
 
-  useEffect(() => {
-    loadNearby();
-  }, [loadNearby]);
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Nearby items</Text>
@@ -74,7 +74,7 @@ export default function MapScreen() {
             {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}` : 'Explore the swap map'}
           </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={loadNearby} disabled={loading}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => loadNearby()} disabled={loading}>
           {loading ? (
             <ActivityIndicator size="small" color={theme.colors.primary[600]} />
           ) : (
@@ -101,7 +101,7 @@ export default function MapScreen() {
         <MapPin size={14} color={theme.colors.primary[600]} />
         <Text style={styles.listToggleText}>{items.length} items in view</Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -135,8 +135,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 40,
-    paddingBottom: 12,
+    paddingVertical: 12,
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,

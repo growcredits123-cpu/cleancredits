@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Star, LogOut, Package, MapPin, Shield } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
@@ -32,26 +33,26 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); refreshProfile(); }} />}
-    >
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          {profile.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
-          ) : (
-            <Text style={styles.avatarInitial}>{profile.name.charAt(0).toUpperCase()}</Text>
-          )}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); refreshProfile(); }} />}
+      >
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            {profile.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarInitial}>{profile.name.charAt(0).toUpperCase()}</Text>
+            )}
+          </View>
+          <Text style={styles.name}>{profile.name}</Text>
+          <Text style={styles.email}>{profile.email}</Text>
+          <View style={styles.ratingRow}>
+            <Star size={16} color={theme.colors.warning} fill={theme.colors.warning} />
+            <Text style={styles.rating}>{profile.rating_avg.toFixed(1)} rating</Text>
+          </View>
         </View>
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.email}>{profile.email}</Text>
-        <View style={styles.ratingRow}>
-          <Star size={16} color={theme.colors.warning} fill={theme.colors.warning} />
-          <Text style={styles.rating}>{profile.rating_avg.toFixed(1)} rating</Text>
-        </View>
-      </View>
 
       <View style={styles.statsRow}>
         <View style={styles.stat}>
@@ -105,13 +106,14 @@ export default function ProfileScreen() {
         <LogOut size={18} color={theme.colors.error} />
         <Text style={styles.signOutText}>Sign out</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { alignItems: 'center', paddingTop: 64, paddingBottom: 24, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  header: { alignItems: 'center', paddingTop: 24, paddingBottom: 24, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: theme.colors.primary[100], alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImg: { width: '100%', height: '100%' },
   avatarInitial: { fontSize: 36, fontWeight: '700', color: theme.colors.primary[700], fontFamily: theme.fonts.bold },

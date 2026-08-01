@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ArrowDownUp, Package } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -38,9 +39,11 @@ export default function ExchangesScreen() {
     setRefreshing(false);
   }, [session, filter]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   function statusColor(status: string) {
     switch (status) {
@@ -54,7 +57,7 @@ export default function ExchangesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Your swaps</Text>
         <Text style={styles.subtitle}>Track exchange requests and pickups</Text>
@@ -115,13 +118,13 @@ export default function ExchangesScreen() {
           }}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   subtitle: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular },
   filterRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12, gap: 8, backgroundColor: theme.colors.surface },

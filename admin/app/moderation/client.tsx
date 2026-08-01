@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getAdminClient } from '@/lib/supabase';
+import { toggleBlockUser, removeListing, resolveReport } from '../actions';
 import { Ban, CheckCircle2, Trash2, Flag, Package, Users } from 'lucide-react';
 
 interface Props {
@@ -21,24 +21,21 @@ export default function ModerationClient({ users, items, reports }: Props) {
 
   async function toggleBlock(user: any) {
     setBusy(user.id);
-    const adminSupabase = getAdminClient();
-    const { error } = await adminSupabase.from('users').update({ is_blocked: !user.is_blocked }).eq('id', user.id);
+    const { error } = await toggleBlockUser(user.id, user.is_blocked);
     setBusy(null);
     if (!error) setUserState((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_blocked: !u.is_blocked } : u)));
   }
 
   async function removeListing(item: any) {
     setBusy(item.id);
-    const adminSupabase = getAdminClient();
-    const { error } = await adminSupabase.from('items').update({ status: 'removed' }).eq('id', item.id);
+    const { error } = await removeListing(item.id);
     setBusy(null);
     if (!error) setItemState((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'removed' } : i)));
   }
 
   async function resolveReport(report: any) {
     setBusy(report.id);
-    const adminSupabase = getAdminClient();
-    const { error } = await adminSupabase.from('reports').update({ status: 'resolved' }).eq('id', report.id);
+    const { error } = await resolveReport(report.id);
     setBusy(null);
     if (!error) setReportState((prev) => prev.map((r) => (r.id === report.id ? { ...r, status: 'resolved' } : r)));
   }

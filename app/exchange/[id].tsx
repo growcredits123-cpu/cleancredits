@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Image, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Send, CheckCircle2, XCircle, Package, Star } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
@@ -17,9 +18,9 @@ export default function ExchangeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const insets = useSafeAreaInsets();
   const [exchange, setExchange] = useState<FullExchange | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [showRating, setShowRating] = useState(false);
@@ -80,11 +81,9 @@ export default function ExchangeDetailScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [id, load]);
 
-  async function sendMessage() {
-    if (!text.trim() || !session || !id) return;
-    const msg = text.trim();
-    setText('');
-    await supabase.from('messages').insert({ exchange_id: id, sender_id: session.user.id, text: msg });
+  async function sendMessage(msgText: string) {
+    if (!msgText || !session || !id) return;
+    await supabase.from('messages').insert({ exchange_id: id, sender_id: session.user.id, text: msgText });
   }
 
   async function act(rpc: string, label: string) {
@@ -120,16 +119,17 @@ export default function ExchangeDetailScreen() {
   const myConfirmed = isRequester ? (exchange as any).requester_confirmed : (exchange as any).owner_confirmed;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft size={22} color={theme.colors.text} />
-        </TouchableOpacity>
-        <View style={styles.topTitleWrap}>
-          <Text style={styles.topTitle} numberOfLines={1}>{exchange.item?.title || 'Exchange'}</Text>
-          <Text style={styles.topSubtext}>{otherUser?.name}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={22} color={theme.colors.text} />
+          </TouchableOpacity>
+          <View style={styles.topTitleWrap}>
+            <Text style={styles.topTitle} numberOfLines={1}>{exchange.item?.title || 'Exchange'}</Text>
+            <Text style={styles.topSubtext}>{otherUser?.name}</Text>
+          </View>
         </View>
-      </View>
 
       <View style={styles.statusBar}>
         <View style={[styles.statusBadge, { backgroundColor: statusColor(status) + '20' }]}>
@@ -216,19 +216,7 @@ export default function ExchangeDetailScreen() {
 
       {/* Message input — available in active states */}
       {['requested', 'accepted', 'token_held', 'picked_up'].includes(status) && (
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={setText}
-            placeholder="Type a message…"
-            placeholderTextColor={theme.colors.neutral[400]}
-            multiline
-          />
-          <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={!text.trim()}>
-            <Send size={18} color={text.trim() ? '#fff' : theme.colors.neutral[400]} />
-          </TouchableOpacity>
-        </View>
+        <ChatInput onSend={sendMessage} />
       )}
 
       {/* Rating modal */}
@@ -262,7 +250,8 @@ export default function ExchangeDetailScreen() {
           </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -277,10 +266,39 @@ function statusColor(status: string) {
   }
 }
 
+function ChatInput({ onSend }: { onSend: (text: string) => void }) {
+  const [text, setText] = useState('');
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <TextInput
+        style={styles.input}
+        value={text}
+        onChangeText={setText}
+        placeholder="Type a message…"
+        placeholderTextColor={theme.colors.neutral[400]}
+        multiline
+      />
+      <TouchableOpacity 
+        style={styles.sendBtn} 
+        onPress={() => {
+          if (text.trim()) {
+            onSend(text.trim());
+            setText('');
+          }
+        }} 
+        disabled={!text.trim()}
+      >
+        <Send size={18} color={text.trim() ? '#fff' : theme.colors.neutral[400]} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: 56, paddingHorizontal: 12, paddingBottom: 8, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   topTitleWrap: { flex: 1, marginLeft: 4 },
   topTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
@@ -310,7 +328,7 @@ const styles = StyleSheet.create({
   actBtnTextDark: { color: theme.colors.neutral[700], fontSize: 14, fontWeight: '700', fontFamily: theme.fonts.bold },
   ratedBadge: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
   ratedText: { fontSize: 14, fontWeight: '600', color: theme.colors.success, fontFamily: theme.fonts.bold },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: theme.colors.surface, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingBottom: Platform.OS === 'ios' ? 28 : 10 },
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingTop: 10, backgroundColor: theme.colors.surface, borderTopWidth: 1, borderTopColor: theme.colors.border },
   input: { flex: 1, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100, color: theme.colors.text, backgroundColor: theme.colors.neutral[50], fontFamily: theme.fonts.regular },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.primary[500], alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },

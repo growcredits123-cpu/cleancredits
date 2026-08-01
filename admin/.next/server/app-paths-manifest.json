@@ -1,0 +1,6 @@
+{
+  "/page": "app/page.js",
+  "/recycling/page": "app/recycling/page.js",
+  "/tokens/page": "app/tokens/page.js",
+  "/moderation/page": "app/moderation/page.js"
+}

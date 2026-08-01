@@ -30,9 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
     if (error) {
       console.warn('loadProfile error', error.message);
-      return;
     }
-    if (data) setProfile(data as User);
+    if (data) {
+      setProfile(data as User);
+    } else {
+      setProfile({ id: uid, name: 'User', email: '', rating_avg: 0 } as User);
+    }
   }
 
   useEffect(() => {
@@ -42,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(data.session);
       if (data.session) {
-        loadProfile(data.session.user.id).finally(() => mounted && setLoading(false));
+        ensureProfile(data.session).then(() => {
+          if (!mounted) return;
+          loadProfile(data.session.user.id).finally(() => mounted && setLoading(false));
+        });
       } else {
         setLoading(false);
       }
@@ -97,11 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) return { error: error.message };
     if (data.user) {
-      await supabase.from('users').insert({
+      const { error: insertError } = await supabase.from('users').insert({
         id: data.user.id,
         name,
         email,
       });
+      if (insertError) {
+        console.error('Failed to create public user profile:', insertError.message);
+        return { error: 'Account created, but profile setup failed due to permissions.' };
+      }
     }
     return { error: null };
   }

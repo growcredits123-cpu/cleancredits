@@ -14,6 +14,11 @@ export function getAdminClient(): SupabaseClient {
       'Copy .env from the Expo project and add the service role key.'
     );
   }
-  _client = createClient(url, key, { auth: { persistSession: false } });
+  _client = createClient(url, key, {
+    auth: { persistSession: false },
+    global: {
+      fetch: (reqUrl, options) => fetch(reqUrl, { ...options, cache: 'no-store' })
+    }
+  });
   return _client;
 }

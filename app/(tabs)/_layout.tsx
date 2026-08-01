@@ -1,11 +1,13 @@
 import { Redirect, Tabs } from 'expo-router';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Map, Plus, Wallet, MessageSquare, User as UserIcon, Recycle } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 
 export default function TabLayout() {
   const { session, loading } = useAuth();
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return (
@@ -29,8 +31,8 @@ export default function TabLayout() {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: { fontSize: 11, fontFamily: theme.fonts.regular, fontWeight: '600' },

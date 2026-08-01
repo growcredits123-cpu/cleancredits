@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, ArrowDownCircle, ArrowUpCircle, Gift } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -58,10 +59,11 @@ export default function WalletScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Wallet</Text>
         <Text style={styles.subtitle}>Your token balance and history</Text>
+        <Text style={{ fontSize: 11, color: theme.colors.neutral[400], marginTop: 4, fontFamily: 'Inter_400Regular' }}>User ID: {session?.user.id}</Text>
       </View>
 
       <View style={styles.balanceCard}>
@@ -127,13 +129,13 @@ export default function WalletScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   subtitle: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular },
   balanceCard: { margin: 16, borderRadius: theme.radius.xl, padding: 24, backgroundColor: theme.colors.primary[600], alignItems: 'center' },

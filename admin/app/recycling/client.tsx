@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getAdminClient } from '@/lib/supabase';
+import { approveRecyclingSpot, rejectRecyclingSpot } from '../actions';
 import { Check, X, MapPin, AlertTriangle, Clock } from 'lucide-react';
 
 interface Spot {
@@ -21,16 +21,14 @@ export default function RecyclingReviewClient({ spots: initial }: { spots: Spot[
 
   async function approve(id: string) {
     setBusyId(id);
-    const adminSupabase = getAdminClient();
-    const { error } = await adminSupabase.rpc('approve_recycling_spot', { p_spot_id: id, p_reward: 5 });
+    const { error } = await approveRecyclingSpot(id);
     setBusyId(null);
     if (!error) setSpots((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function reject(id: string) {
     setBusyId(id);
-    const adminSupabase = getAdminClient();
-    const { error } = await adminSupabase.rpc('reject_recycling_spot', { p_spot_id: id });
+    const { error } = await rejectRecyclingSpot(id);
     setBusyId(null);
     if (!error) setSpots((prev) => prev.filter((s) => s.id !== id));
   }
