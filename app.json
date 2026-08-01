@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "slug": "grow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -24,6 +24,16 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3431a097-6024-449c-b0e9-657405daa9b4"
+      }
+    },
+    "owner": "growcredits123s-team",
+    "android": {
+      "package": "com.growcredits123steam.grow"
     }
   }
 }

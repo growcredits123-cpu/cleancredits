@@ -19,21 +19,21 @@ export default function ModerationClient({ users, items, reports }: Props) {
   const [reportState, setReportState] = useState(reports);
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function toggleBlock(user: any) {
+  async function handleToggleBlock(user: any) {
     setBusy(user.id);
     const { error } = await toggleBlockUser(user.id, user.is_blocked);
     setBusy(null);
     if (!error) setUserState((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_blocked: !u.is_blocked } : u)));
   }
 
-  async function removeListing(item: any) {
+  async function handleRemoveListing(item: any) {
     setBusy(item.id);
     const { error } = await removeListing(item.id);
     setBusy(null);
     if (!error) setItemState((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'removed' } : i)));
   }
 
-  async function resolveReport(report: any) {
+  async function handleResolveReport(report: any) {
     setBusy(report.id);
     const { error } = await resolveReport(report.id);
     setBusy(null);
@@ -93,7 +93,7 @@ export default function ModerationClient({ users, items, reports }: Props) {
                     </td>
                     <td className="px-4 py-3">
                       {r.status === 'open' && (
-                        <button onClick={() => resolveReport(r)} disabled={busy === r.id} className="text-xs font-semibold text-eco-600 hover:text-eco-700">Resolve</button>
+                        <button onClick={() => handleResolveReport(r)} disabled={busy === r.id} className="text-xs font-semibold text-eco-600 hover:text-eco-700">Resolve</button>
                       )}
                     </td>
                   </tr>
@@ -126,7 +126,7 @@ export default function ModerationClient({ users, items, reports }: Props) {
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${u.is_blocked ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{u.is_blocked ? 'Blocked' : 'Active'}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => toggleBlock(u)} disabled={busy === u.id} className={`flex items-center gap-1 text-xs font-semibold ${u.is_blocked ? 'text-eco-600 hover:text-eco-700' : 'text-red-600 hover:text-red-700'}`}>
+                    <button onClick={() => handleToggleBlock(u)} disabled={busy === u.id} className={`flex items-center gap-1 text-xs font-semibold ${u.is_blocked ? 'text-eco-600 hover:text-eco-700' : 'text-red-600 hover:text-red-700'}`}>
                       {u.is_blocked ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
                       {u.is_blocked ? 'Unblock' : 'Block'}
                     </button>
@@ -157,7 +157,7 @@ export default function ModerationClient({ users, items, reports }: Props) {
                   <td className="px-4 py-3"><span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-600">{i.status}</span></td>
                   <td className="px-4 py-3">
                     {i.status !== 'removed' && (
-                      <button onClick={() => removeListing(i)} disabled={busy === i.id} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700">
+                      <button onClick={() => handleRemoveListing(i)} disabled={busy === i.id} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700">
                         <Trash2 className="w-3.5 h-3.5" />Remove
                       </button>
                     )}

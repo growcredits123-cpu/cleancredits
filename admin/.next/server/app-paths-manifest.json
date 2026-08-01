@@ -1,6 +1,7 @@
 {
-  "/page": "app/page.js",
-  "/recycling/page": "app/recycling/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/tokens/page": "app/tokens/page.js",
-  "/moderation/page": "app/moderation/page.js"
+  "/moderation/page": "app/moderation/page.js",
+  "/recycling/page": "app/recycling/page.js",
+  "/page": "app/page.js"
 }
