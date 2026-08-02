@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Platform, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Platform, TextInput, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,11 +10,23 @@ import { theme } from '@/lib/theme';
 import { encodeGeohash } from '@/lib/geohash';
 import type { RecyclingSpot } from '@/lib/types';
 import { decode } from 'base64-arraybuffer';
+import useSWR from 'swr';
 
 export default function RecycleScreen() {
   const { session } = useAuth();
-  const [spots, setSpots] = useState<RecyclingSpot[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const fetcher = async () => {
+    const { data, error } = await supabase
+      .from('recycling_spots')
+      .select('id, user_id, lat, lng, photo_url, status, geohash, created_at, user:users!recycling_spots_user_id_fkey(id, name, avatar_url)')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data as unknown as RecyclingSpot[]) || [];
+  };
+
+  const { data: spots = [], error: fetchError, mutate, isValidating } = useSWR('recycling_spots', fetcher);
   const [reporting, setReporting] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -23,18 +35,19 @@ export default function RecycleScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const load = useCallback(async () => {
-    const { data } = await supabase
-      .from('recycling_spots')
-      .select('id, user_id, lat, lng, photo_url, status, geohash, created_at, user:users!recycling_spots_user_id_fkey(id, name, avatar_url)')
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setSpots((data as unknown as RecyclingSpot[]) || []);
-    setLoading(false);
-  }, []);
+  useEffect(() => {
+    // Supabase Realtime for live updates
+    const channel = supabase
+      .channel('public:recycling_spots')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recycling_spots' }, () => {
+        mutate(); // Re-fetch or update cache when database changes
+      })
+      .subscribe();
 
-  useEffect(() => { load(); }, [load]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mutate]);
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -95,10 +108,10 @@ export default function RecycleScreen() {
 
       const { error: insErr } = await supabase.from('recycling_spots').insert({
         user_id: session.user.id,
+        title: 'Community Reported Spot',
         lat: coords.lat,
         lng: coords.lng,
         photo_url: pub.publicUrl,
-        photo_path: photoPath,
         status: 'pending',
         geohash,
       });
@@ -116,11 +129,15 @@ export default function RecycleScreen() {
     }
   }
 
-  if (loading) return <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ flex: 1 }} />;
+  // Remove initial loading spinner for SWR so it renders cached data instantly
+  if (!spots && isValidating) return <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ flex: 1 }} />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={isValidating} onRefresh={() => mutate()} tintColor={theme.colors.primary[500]} />}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Recycling spots</Text>
           <Text style={styles.subtitle}>Find drop-off points or report a new one to earn tokens.</Text>

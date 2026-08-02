@@ -34,7 +34,6 @@ export interface Item {
   title: string;
   description: string;
   photo_url: string | null;
-  photo_path: string | null;
   token_price: number;
   lat: number;
   lng: number;
@@ -74,7 +73,6 @@ export interface RecyclingSpot {
   lat: number;
   lng: number;
   photo_url: string | null;
-  photo_path: string | null;
   status: RecyclingStatus;
   geohash: string;
   created_at: string;

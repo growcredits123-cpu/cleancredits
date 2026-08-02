@@ -21,7 +21,7 @@ export default function ItemDetailScreen() {
   const load = useCallback(async () => {
     const { data, error: qErr } = await supabase
       .from('items')
-      .select('id, owner_id, title, description, photo_url, photo_path, token_price, lat, lng, status, created_at, owner:users!items_owner_id_fkey(id, name, avatar_url, rating_avg, is_blocked)')
+      .select('id, owner_id, title, description, photo_url, token_price, lat, lng, status, created_at, owner:users!items_owner_id_fkey(id, name, avatar_url, rating_avg, is_blocked)')
       .eq('id', id)
       .maybeSingle();
     if (qErr || !data) {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,8 @@ import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 import { MapPanel } from '@/components/MapPanel';
 import type { Item } from '@/lib/types';
+import MapView from 'react-native-maps';
+import useSWR from 'swr';
 
 type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
 
@@ -22,45 +24,73 @@ const DEFAULT_REGION: Region = {
 export default function MapScreen() {
   const { profile } = useAuth();
   const router = useRouter();
+  const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetcher = async (url: string) => {
+    const { data, err } = await fetchItems(region);
+    if (err) throw new Error(err);
+    return data;
+  };
 
-  const loadNearby = useCallback(async (customRegion?: Region) => {
-    const fetchRegion = customRegion || region;
-    setLoading(true);
-    setError(null);
-    const { data, err } = await fetchItems(fetchRegion);
-    if (err) {
-      setError(err);
-    } else {
-      setItems(data);
-    }
-    setLoading(false);
-  }, [region]);
+  const { data: items = [], error: fetchError, mutate, isValidating } = useSWR(
+    `items_${region.latitude.toFixed(2)}_${region.longitude.toFixed(2)}`,
+    fetcher,
+    { dedupingInterval: 10000 }
+  );
+
+  useEffect(() => {
+    if (fetchError) setError(fetchError.message);
+    else setError(null);
+  }, [fetchError]);
+
+  const handleRegionChange = useCallback((newRegion: Region) => {
+    setRegion(newRegion);
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:items')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => {
+        mutate();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mutate]);
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Location permission denied — showing default area.');
-        loadNearby(DEFAULT_REGION);
-        return;
-      }
       try {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        const newRegion = {
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          latitudeDelta: 0.1,
-          longitudeDelta: 0.1,
-        };
-        setRegion(newRegion);
-        loadNearby(newRegion);
-      } catch {
-        setError('Could not get your location.');
-        loadNearby(DEFAULT_REGION);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Location permission denied — showing default area.');
+          setRegion(DEFAULT_REGION);
+          return;
+        }
+        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (!loc) {
+          loc = await Location.getLastKnownPositionAsync() as Location.LocationObject;
+        }
+        
+        if (loc) {
+          const newRegion = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          };
+          setRegion(newRegion);
+          mapRef.current?.animateToRegion(newRegion, 1000);
+        } else {
+          setError('Could not get your location.');
+        }
+      } catch (err: any) {
+        // Fallback to default region if location fails completely
+        setError('Location unavailable. Using default area.');
+        setRegion(DEFAULT_REGION);
       }
     })();
   }, []);
@@ -74,8 +104,8 @@ export default function MapScreen() {
             {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}` : 'Explore the swap map'}
           </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => loadNearby()} disabled={loading}>
-          {loading ? (
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => mutate()} disabled={isValidating}>
+          {isValidating ? (
             <ActivityIndicator size="small" color={theme.colors.primary[600]} />
           ) : (
             <RefreshCw size={18} color={theme.colors.primary[600]} />
@@ -90,8 +120,9 @@ export default function MapScreen() {
       )}
 
       <MapPanel
+        mapRef={mapRef}
         region={region}
-        onRegionChange={setRegion}
+        onRegionChange={handleRegionChange}
         items={items}
         onItemPress={(itemId) => router.push(`/item/${itemId}`)}
         showsUserLocation
@@ -115,7 +146,7 @@ async function fetchItems(region: Region): Promise<{ data: Item[]; err: string |
 
   const { data, error } = await supabase
     .from('items')
-    .select('id, owner_id, title, description, photo_url, photo_path, token_price, lat, lng, status, created_at, owner:users!items_owner_id_fkey(id, name, avatar_url, rating_avg, is_blocked)')
+    .select('id, owner_id, title, description, photo_url, token_price, lat, lng, status, created_at, owner:users!items_owner_id_fkey(id, name, avatar_url, rating_avg, is_blocked)')
     .eq('status', 'available')
     .gte('lat', minLat)
     .lte('lat', maxLat)

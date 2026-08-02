@@ -7,26 +7,36 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 import type { Item } from '@/lib/types';
+import useSWR from 'swr';
 
 export default function ProfileScreen() {
   const { session, profile, signOut, refreshProfile } = useAuth();
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!session) return;
-    const { data } = await supabase
+  const fetcher = async () => {
+    if (!session) return [];
+    const { data, error } = await supabase
       .from('items')
       .select('*')
       .eq('owner_id', session.user.id)
       .order('created_at', { ascending: false });
-    setItems((data as Item[]) || []);
-    setLoading(false);
-    setRefreshing(false);
-  }, [session]);
+    if (error) throw error;
+    return (data as Item[]) || [];
+  };
 
-  useEffect(() => { load(); }, [load]);
+  const { data: items = [], error, mutate, isValidating } = useSWR(session ? `profile_items_${session.user.id}` : null, fetcher);
+
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel(`public:items:owner_${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `owner_id=eq.${session.user.id}` }, () => {
+        mutate();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, mutate]);
 
   if (!profile) {
     return <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ flex: 1 }} />;
@@ -36,7 +46,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); refreshProfile(); }} />}
+        refreshControl={<RefreshControl refreshing={isValidating} onRefresh={() => { mutate(); refreshProfile(); }} tintColor={theme.colors.primary[500]} />}
       >
         <View style={styles.header}>
           <View style={styles.avatar}>
@@ -70,7 +80,7 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your listings</Text>
-        {loading ? (
+        {!items && isValidating ? (
           <ActivityIndicator color={theme.colors.primary[500]} style={{ marginTop: 20 }} />
         ) : items.length === 0 ? (
           <View style={styles.emptySection}>

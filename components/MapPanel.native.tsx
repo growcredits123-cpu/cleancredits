@@ -10,6 +10,7 @@ interface MapPanelProps {
   items: Item[];
   onItemPress: (id: string) => void;
   showsUserLocation?: boolean;
+  mapRef?: React.RefObject<MapView>;
 }
 
 class MapErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -33,7 +34,7 @@ class MapErrorBoundary extends Component<{ children: React.ReactNode }, { hasErr
   }
 }
 
-export function MapPanel({ region, onRegionChange, items, onItemPress, showsUserLocation }: MapPanelProps) {
+export function MapPanel({ region, onRegionChange, items, onItemPress, showsUserLocation, mapRef }: MapPanelProps) {
   const validItems = (items || []).filter(
     (item) =>
       item &&
@@ -43,12 +44,22 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
       !isNaN(item.lng)
   );
 
+  const handleRegionChangeComplete = (newRegion: any) => {
+    if (!newRegion) return;
+    const latDiff = Math.abs(newRegion.latitude - region.latitude);
+    const lngDiff = Math.abs(newRegion.longitude - region.longitude);
+    if (latDiff > 0.005 || lngDiff > 0.005) {
+      onRegionChange(newRegion);
+    }
+  };
+
   return (
     <MapErrorBoundary>
       <MapView
+        ref={mapRef}
         style={{ flex: 1 }}
-        region={region}
-        onRegionChangeComplete={onRegionChange}
+        initialRegion={region}
+        onRegionChangeComplete={handleRegionChangeComplete}
         showsUserLocation={showsUserLocation}
         showsMyLocationButton
       >

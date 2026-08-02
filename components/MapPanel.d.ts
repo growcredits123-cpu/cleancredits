@@ -7,6 +7,7 @@ interface MapPanelProps {
   items: Item[];
   onItemPress: (id: string) => void;
   showsUserLocation?: boolean;
+  mapRef?: any;
 }
 
 export declare function MapPanel(props: MapPanelProps): React.JSX.Element;

@@ -63,7 +63,7 @@ export default function WalletScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Wallet</Text>
         <Text style={styles.subtitle}>Your token balance and history</Text>
-        <Text style={{ fontSize: 11, color: theme.colors.neutral[400], marginTop: 4, fontFamily: 'Inter_400Regular' }}>User ID: {session?.user.id}</Text>
+        <Text style={{ fontSize: 11, color: theme.colors.neutral[400], marginTop: 4, fontFamily: theme.fonts.regular }}>User ID: {session?.user.id}</Text>
       </View>
 
       <View style={styles.balanceCard}>

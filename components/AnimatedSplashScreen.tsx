@@ -6,7 +6,11 @@ import Animated, {
   withTiming,
   withDelay,
   withSpring,
+  withSequence,
   runOnJS,
+  Easing,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 import * as SplashScreen from 'expo-splash-screen';
 import { theme } from '@/lib/theme';
@@ -18,35 +22,54 @@ interface Props {
 }
 
 export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
-  const opacity = useSharedValue(1);
-  const scale = useSharedValue(0.6);
+  const containerOpacity = useSharedValue(1);
+  const logoScale = useSharedValue(0.3);
+  const logoRotation = useSharedValue(-15);
   const textOpacity = useSharedValue(0);
-  const textTranslateY = useSharedValue(20);
+  const textTranslateY = useSharedValue(30);
+  const rippleScale = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0.5);
 
   useEffect(() => {
     // Hide the native splash screen seamlessly once this JS component mounts
     SplashScreen.hideAsync().catch(() => {});
     
-    // Start animation sequence
-    scale.value = withSpring(1, { damping: 14, stiffness: 100 });
-    textOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
-    textTranslateY.value = withDelay(300, withSpring(0, { damping: 12, stiffness: 90 }));
+    // 1. Logo pop-in and rotate
+    logoScale.value = withSpring(1, { damping: 12, stiffness: 90 });
+    logoRotation.value = withSpring(0, { damping: 10, stiffness: 80 });
     
-    // Fade out everything after 2 seconds
-    opacity.value = withDelay(
-      2000, 
-      withTiming(0, { duration: 500 }, () => {
+    // 2. Ripple effect behind the logo
+    rippleScale.value = withDelay(
+      200,
+      withTiming(4, { duration: 800, easing: Easing.out(Easing.ease) })
+    );
+    rippleOpacity.value = withDelay(
+      200,
+      withTiming(0, { duration: 800, easing: Easing.out(Easing.ease) })
+    );
+
+    // 3. Text slides up and fades in
+    textOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
+    textTranslateY.value = withDelay(400, withSpring(0, { damping: 14, stiffness: 100 }));
+    
+    // 4. Fade out entire screen
+    containerOpacity.value = withDelay(
+      2200, 
+      withTiming(0, { duration: 600, easing: Easing.inOut(Easing.ease) }, () => {
         runOnJS(onAnimationComplete)();
       })
     );
   }, []);
 
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+    opacity: containerOpacity.value,
   }));
 
   const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { scale: logoScale.value },
+      { rotate: `${logoRotation.value}deg` }
+    ],
   }));
 
   const textStyle = useAnimatedStyle(() => ({
@@ -54,8 +77,14 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
     transform: [{ translateY: textTranslateY.value }],
   }));
 
+  const rippleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: rippleScale.value }],
+    opacity: rippleOpacity.value,
+  }));
+
   return (
     <Animated.View style={[styles.container, containerStyle]}>
+      <Animated.View style={[styles.ripple, rippleStyle]} />
       <Animated.View style={[styles.logoContainer, logoStyle]}>
         <View style={styles.iconCircle}>
           <Image
@@ -73,11 +102,18 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.primary[600],
+    backgroundColor: theme.colors.primary[700],
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 99999,
     elevation: 99999,
+  },
+  ripple: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.primary[500],
   },
   logoContainer: {
     alignItems: 'center',
@@ -85,21 +121,21 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 32,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    ...theme.elevation.lg,
   },
   text: {
-    fontSize: 48,
+    fontSize: 44,
     color: '#ffffff',
     letterSpacing: -1.5,
-    fontFamily: Platform.OS === 'ios' ? 'Inter-Bold' : 'Inter-Bold', // Use loaded font
+    fontFamily: Platform.OS === 'ios' ? 'Inter-Bold' : 'Inter-Bold',
     fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   }
 });

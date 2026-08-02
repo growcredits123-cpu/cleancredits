@@ -52,15 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         (s.user.email ? s.user.email.split('@')[0] : 'User');
       const avatarUrl = (s.user.user_metadata?.avatar_url as string) || null;
 
-      await supabase.from('users').upsert(
+      const { error } = await supabase.from('users').upsert(
         {
           id: uid,
           name,
           email: s.user.email || '',
           avatar_url: avatarUrl,
         },
-        { onConflict: 'id', ignoreDuplicates: true }
+        { onConflict: 'id' }
       );
+      if (error) {
+        console.warn('ensureProfile database error:', error.message);
+      }
     } catch (e) {
       console.warn('ensureProfile exception:', e);
     }
@@ -140,9 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           { onConflict: 'id' }
         );
       }
-      if (data?.session) {
+      if (data?.session && data?.user) {
         setSession(data.session);
-        await loadProfile(data.user!.id);
+        await loadProfile(data.user.id);
       }
       return { error: null };
     } catch (err: any) {

@@ -9,6 +9,7 @@ interface MapPanelProps {
   items: Item[];
   onItemPress: (id: string) => void;
   showsUserLocation?: boolean;
+  mapRef?: any;
 }
 
 export function MapPanel({ items }: MapPanelProps) {

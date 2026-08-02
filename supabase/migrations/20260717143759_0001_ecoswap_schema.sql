@@ -112,6 +112,12 @@ TO authenticated
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "users_insert_own" ON users;
+CREATE POLICY "users_insert_own"
+ON users FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = id);
+
 -- =========================================================
 -- items
 -- =========================================================

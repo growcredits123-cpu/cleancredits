@@ -7,6 +7,7 @@ import { Camera, MapPin, Tag, FileText } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
+import { encodeGeohash } from '@/lib/geohash';
 import { decode } from 'base64-arraybuffer';
 
 export default function PostScreen() {
@@ -69,15 +70,17 @@ export default function PostScreen() {
 
       const { data: pub } = supabase.storage.from('item-photos').getPublicUrl(photoPath);
 
+      const geohash = encodeGeohash(coords.lat, coords.lng, 12);
+
       const { error: insErr } = await supabase.from('items').insert({
         owner_id: session!.user.id,
         title: title.trim(),
         description: description.trim(),
         photo_url: pub.publicUrl,
-        photo_path: photoPath,
         token_price: price,
         lat: coords.lat,
         lng: coords.lng,
+        geohash,
         status: 'available',
       });
       if (insErr) throw new Error(insErr.message);
