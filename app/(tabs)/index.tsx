@@ -7,9 +7,8 @@ import { RefreshCw, MapPin } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
-import { MapPanel } from '@/components/MapPanel';
+import { MapPanel, MapRef } from '@/components/MapPanel';
 import type { Item } from '@/lib/types';
-import MapView from 'react-native-maps';
 import useSWR from 'swr';
 
 type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
@@ -24,7 +23,7 @@ const DEFAULT_REGION: Region = {
 export default function MapScreen() {
   const { profile } = useAuth();
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapRef>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
   const [error, setError] = useState<string | null>(null);
   const fetcher = async (url: string) => {

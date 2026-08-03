@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { Inter_400Regular, Inter_700Bold } from '@expo-google-fonts/inter';
+import * as Updates from 'expo-updates';
+import { ToastAndroid, Platform } from 'react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider } from '@/lib/auth';
 import { theme } from '@/lib/theme';
@@ -14,6 +16,30 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   useFrameworkReady();
   const [splashComplete, setSplashComplete] = useState(false);
+
+  useEffect(() => {
+    async function checkForUpdates() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          if (Platform.OS === 'android') {
+            ToastAndroid.show('New update downloading...', ToastAndroid.SHORT);
+          }
+          await Updates.fetchUpdateAsync();
+          if (Platform.OS === 'android') {
+            ToastAndroid.show('Update downloaded! Restarting app...', ToastAndroid.LONG);
+          }
+          await Updates.reloadAsync();
+        }
+      } catch (error) {
+        console.log('OTA Update Error:', error);
+      }
+    }
+
+    if (!__DEV__) {
+      checkForUpdates();
+    }
+  }, []);
 
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,

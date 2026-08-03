@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, MapPin, ArrowLeft, Package, Trash2 } from 'lucide-react-native';
+import { Star, MapPin, ArrowLeft, Package, Trash2, Navigation } from 'lucide-react-native';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
@@ -67,6 +68,17 @@ export default function ItemDetailScreen() {
     ]);
   }
 
+  function handleNavigate() {
+    if (!item) return;
+    const url = Platform.select({
+      ios: `maps:0,0?q=${item.title}@${item.lat},${item.lng}`,
+      android: `geo:0,0?q=${item.lat},${item.lng}(${item.title})`,
+    });
+    if (url) {
+      Linking.openURL(url);
+    }
+  }
+
   if (loading) return <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ flex: 1 }} />;
   if (error || !item) return <View style={styles.center}><Text>{error || 'Item not found'}</Text></View>;
 
@@ -112,6 +124,10 @@ export default function ItemDetailScreen() {
         <View style={styles.locationRow}>
           <MapPin size={16} color={theme.colors.textMuted} />
           <Text style={styles.locationText}>{item.lat.toFixed(4)}, {item.lng.toFixed(4)}</Text>
+          <TouchableOpacity style={styles.navigateBtn} onPress={handleNavigate}>
+            <Navigation size={14} color={theme.colors.primary[600]} />
+            <Text style={styles.navigateText}>Navigate</Text>
+          </TouchableOpacity>
         </View>
 
         {owner && (
@@ -169,4 +185,6 @@ const styles = StyleSheet.create({
   ownerRating: { fontSize: 12, color: theme.colors.textMuted, fontFamily: theme.fonts.regular },
   requestBtn: { backgroundColor: theme.colors.primary[500], borderRadius: theme.radius.md, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
   requestBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: theme.fonts.bold },
+  navigateBtn: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primary[50], paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  navigateText: { fontSize: 13, color: theme.colors.primary[700], fontWeight: '700', fontFamily: theme.fonts.bold },
 });

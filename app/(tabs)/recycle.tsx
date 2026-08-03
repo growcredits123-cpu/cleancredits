@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Platform, TextInput, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, MapPin, Recycle, CheckCircle2, AlertTriangle } from 'lucide-react-native';
+import { Camera, MapPin, Recycle, CheckCircle2, AlertTriangle, Compass } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
@@ -11,10 +11,12 @@ import { encodeGeohash } from '@/lib/geohash';
 import type { RecyclingSpot } from '@/lib/types';
 import { decode } from 'base64-arraybuffer';
 import useSWR from 'swr';
+import { LocationPickerMap, LocationPickerRef } from '@/components/LocationPickerMap';
 
 export default function RecycleScreen() {
   const { session } = useAuth();
-  
+  const pickerRef = useRef<LocationPickerRef>(null);
+
   const fetcher = async () => {
     const { data, error } = await supabase
       .from('recycling_spots')
@@ -34,13 +36,13 @@ export default function RecycleScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
-    // Supabase Realtime for live updates
     const channel = supabase
       .channel('public:recycling_spots')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recycling_spots' }, () => {
-        mutate(); // Re-fetch or update cache when database changes
+        mutate();
       })
       .subscribe();
 
@@ -66,16 +68,30 @@ export default function RecycleScreen() {
   }
 
   async function captureLocation() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') { setError('Location permission denied.'); return; }
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { setError('Location permission denied.'); setLocating(false); return; }
+      let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (!loc) {
+        loc = await Location.getLastKnownPositionAsync() as Location.LocationObject;
+      }
+      if (loc) {
+        const newCoords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+        setCoords(newCoords);
+        pickerRef.current?.setCenter(newCoords.lat, newCoords.lng);
+      }
+    } catch (e) {
+      // Fallback
+    } finally {
+      setLocating(false);
+    }
   }
 
   async function submitReport() {
     setError(null);
     if (!imageUri) return setError('Please add a photo.');
-    if (!coords) return setError('Please capture your location.');
+    if (!coords) return setError('Please mark your location on the Geo Map.');
     if (!session) return;
 
     setBusy(true);
@@ -83,7 +99,6 @@ export default function RecycleScreen() {
       const geohash = encodeGeohash(coords.lat, coords.lng, 12);
       const prefix = geohash.slice(0, 8);
 
-      // Duplicate check: any approved spot within the same geohash prefix (~38m)
       const { data: nearby } = await supabase
         .from('recycling_spots')
         .select('id')
@@ -129,7 +144,6 @@ export default function RecycleScreen() {
     }
   }
 
-  // Remove initial loading spinner for SWR so it renders cached data instantly
   if (!spots && isValidating) return <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ flex: 1 }} />;
 
   return (
@@ -145,7 +159,7 @@ export default function RecycleScreen() {
 
       {!reporting ? (
         <>
-          <TouchableOpacity style={styles.reportBtn} onPress={() => { setReporting(true); setError(null); }}>
+          <TouchableOpacity style={styles.reportBtn} onPress={() => { setReporting(true); setError(null); captureLocation(); }}>
             <Recycle size={20} color="#fff" />
             <Text style={styles.reportBtnText}>Report a new spot</Text>
           </TouchableOpacity>
@@ -191,13 +205,34 @@ export default function RecycleScreen() {
           </TouchableOpacity>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Location</Text>
-            <TouchableOpacity style={styles.locationBtn} onPress={captureLocation}>
-              <MapPin size={16} color={theme.colors.primary[600]} />
-              <Text style={styles.locationText}>
-                {coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : 'Capture GPS location'}
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.label}>Location (Geo Map)</Text>
+
+            <LocationPickerMap
+              initialCoords={coords}
+              onLocationSelect={(selectedCoords) => setCoords(selectedCoords)}
+              pickerRef={pickerRef}
+              height={200}
+            />
+
+            <View style={styles.locationMetaRow}>
+              <View style={styles.coordsBadge}>
+                <MapPin size={14} color={theme.colors.primary[600]} />
+                <Text style={styles.coordsText}>
+                  {coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : 'Tap map to mark location'}
+                </Text>
+              </View>
+
+              <TouchableOpacity style={styles.gpsBtn} onPress={captureLocation} disabled={locating}>
+                {locating ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+                ) : (
+                  <>
+                    <Compass size={14} color={theme.colors.primary[600]} />
+                    <Text style={styles.gpsText}>Use My GPS</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {error && (
@@ -253,9 +288,19 @@ const styles = StyleSheet.create({
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   photoText: { fontSize: 14, color: theme.colors.neutral[400], fontFamily: theme.fonts.regular },
   field: { marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: theme.colors.neutral[700], marginBottom: 6, fontFamily: theme.fonts.bold },
-  locationBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.primary[50], borderRadius: theme.radius.md, paddingHorizontal: 14, paddingVertical: 14 },
-  locationText: { fontSize: 15, color: theme.colors.text, fontFamily: theme.fonts.regular },
+  label: { fontSize: 13, fontWeight: '600', color: theme.colors.neutral[700], marginBottom: 8, fontFamily: theme.fonts.bold },
+  locationMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 10 },
+  coordsBadge: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, paddingHorizontal: 12, paddingVertical: 10,
+  },
+  coordsText: { fontSize: 14, color: theme.colors.text, fontFamily: theme.fonts.regular },
+  gpsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary[50],
+    borderWidth: 1, borderColor: theme.colors.primary[100], borderRadius: theme.radius.md,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  gpsText: { fontSize: 13, fontWeight: '700', color: theme.colors.primary[700], fontFamily: theme.fonts.bold },
   errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: theme.colors.error + '10', borderRadius: theme.radius.md, padding: 12, marginBottom: 12 },
   errorText: { flex: 1, fontSize: 13, color: theme.colors.error, fontFamily: theme.fonts.regular },
   successBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: theme.colors.success + '12', borderRadius: theme.radius.md, padding: 12, marginBottom: 12 },

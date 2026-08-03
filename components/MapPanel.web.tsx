@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { theme } from '@/lib/theme';
 import type { Item } from '@/lib/types';
 
+export interface MapRef {
+  animateToRegion: (region: { latitude: number; longitude: number }, duration?: number) => void;
+}
+
 interface MapPanelProps {
   region: { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
   onRegionChange: (r: any) => void;
@@ -17,7 +21,7 @@ export function MapPanel({ items }: MapPanelProps) {
     <View style={styles.fallback}>
       <ActivityIndicator color={theme.colors.primary[500]} />
       <Text style={styles.fallbackText}>Map view is available on mobile devices.</Text>
-      <Text style={styles.fallbackSubtext}>{items.length} items nearby</Text>
+      <Text style={styles.fallbackSubtext}>{items?.length || 0} items nearby</Text>
     </View>
   );
 }
