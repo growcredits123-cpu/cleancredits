@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 
@@ -14,6 +14,8 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   async function handleSignUp() {
     setError(null);
@@ -28,7 +30,26 @@ export default function SignupScreen() {
     setBusy(true);
     const { error } = await signUpWithEmail(email.trim(), password, name.trim());
     setBusy(false);
-    if (error) setError(error);
+    
+    if (error === 'verification_required') {
+      import('react-native').then(({ Alert }) => {
+        Alert.alert(
+          "Verification Required",
+          "Verification email sent! Please check your inbox and click on the link to verify your email, then sign in.",
+          [{ text: "OK", onPress: () => router.push('/(auth)/login') }]
+        );
+      });
+    } else if (error === 'Email already exists.') {
+      import('react-native').then(({ Alert }) => {
+        Alert.alert(
+          "Email Exists",
+          "This email is already registered. Please sign in instead.",
+          [{ text: "Sign In", onPress: () => router.push('/(auth)/login') }, { text: "Cancel", style: "cancel" }]
+        );
+      });
+    } else if (error) {
+      setError(error);
+    }
   }
 
   return (
@@ -94,9 +115,16 @@ export default function SignupScreen() {
                   onChangeText={setPassword}
                   placeholder="Password (min 6 chars)"
                   placeholderTextColor={theme.colors.neutral[400]}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   textContentType="newPassword"
                 />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                  {showPassword ? (
+                    <EyeOff size={20} color={theme.colors.neutral[400]} />
+                  ) : (
+                    <Eye size={20} color={theme.colors.neutral[400]} />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 

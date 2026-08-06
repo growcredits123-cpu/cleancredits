@@ -57,6 +57,7 @@ export interface Exchange {
 
 export interface LedgerEntry {
   id: string;
+  group_id: string | null;
   user_id: string;
   exchange_id: string | null;
   entry_type: EntryType;

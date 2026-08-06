@@ -37,6 +37,7 @@ export default function RecycleScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [mapScrollEnabled, setMapScrollEnabled] = useState(true);
 
   useEffect(() => {
     const channel = supabase
@@ -149,6 +150,7 @@ export default function RecycleScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView 
+        scrollEnabled={mapScrollEnabled}
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={isValidating} onRefresh={() => mutate()} tintColor={theme.colors.primary[500]} />}
       >
@@ -212,6 +214,7 @@ export default function RecycleScreen() {
               onLocationSelect={(selectedCoords) => setCoords(selectedCoords)}
               pickerRef={pickerRef}
               height={200}
+              onMapInteraction={(active) => setMapScrollEnabled(!active)}
             />
 
             <View style={styles.locationMetaRow}>

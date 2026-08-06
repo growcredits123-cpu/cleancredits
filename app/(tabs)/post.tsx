@@ -24,6 +24,7 @@ export default function PostScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [mapScrollEnabled, setMapScrollEnabled] = useState(true);
 
   useEffect(() => {
     captureLocation();
@@ -128,7 +129,7 @@ export default function PostScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView scrollEnabled={mapScrollEnabled} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Post an item</Text>
           <Text style={styles.subtitle}>List something you no longer need for others to swap.</Text>
 
@@ -175,6 +176,7 @@ export default function PostScreen() {
               onLocationSelect={handleLocationSelect}
               pickerRef={pickerRef}
               height={220}
+              onMapInteraction={(active) => setMapScrollEnabled(!active)}
             />
 
             <View style={styles.locationMetaRow}>

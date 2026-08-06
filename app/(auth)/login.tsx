@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Mail, Lock } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
 
@@ -13,13 +13,26 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   async function handleSignIn() {
     setError(null);
     setBusy(true);
     const { error } = await signInWithEmail(email.trim(), password);
     setBusy(false);
-    if (error) setError(error);
+    
+    if (error === 'Email not confirmed') {
+      import('react-native').then(({ Alert }) => {
+        Alert.alert(
+          "Email Not Verified",
+          "Please check your inbox and verify your email before signing in.",
+          [{ text: "OK" }]
+        );
+      });
+    } else if (error) {
+      setError(error);
+    }
   }
 
   return (
@@ -71,9 +84,16 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   placeholder="Password"
                   placeholderTextColor={theme.colors.neutral[400]}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   textContentType="password"
                 />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                  {showPassword ? (
+                    <EyeOff size={20} color={theme.colors.neutral[400]} />
+                  ) : (
+                    <Eye size={20} color={theme.colors.neutral[400]} />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 

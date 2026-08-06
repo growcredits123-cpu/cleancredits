@@ -76,11 +76,17 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
           map.setView([currentLat, currentLng], 14);
         }
 
+        function safePostMessage(msg) {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+          }
+        }
+
         function addMarker(id, lat, lng) {
           var icon = L.divIcon({ className: 'custom-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
           var marker = L.marker([lat, lng], { icon: icon }).addTo(map);
           marker.on('click', function() {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerPress', id: id }));
+            safePostMessage({ type: 'markerPress', id: id });
           });
           markers[id] = marker;
         }
@@ -90,19 +96,21 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
           var bounds = map.getBounds();
           var latDelta = bounds.getNorth() - bounds.getSouth();
           var lngDelta = bounds.getEast() - bounds.getWest();
-          window.ReactNativeWebView.postMessage(JSON.stringify({
+          safePostMessage({
             type: 'regionChange',
             region: { latitude: center.lat, longitude: center.lng, latitudeDelta: latDelta, longitudeDelta: lngDelta }
-          }));
+          });
         });
 
-        document.addEventListener('message', function(e) {
+        function handleMessage(e) {
           try {
             var data = JSON.parse(e.data);
             if (data.type === 'updateItems') {
               for (var id in markers) { map.removeLayer(markers[id]); }
               markers = {};
-              data.items.forEach(function(item) { addMarker(item.id, item.lat, item.lng); });
+              if (data.items) {
+                data.items.forEach(function(item) { addMarker(item.id, item.lat, item.lng); });
+              }
             } else if (data.type === 'setCenter') {
               currentLat = data.lat;
               currentLng = data.lng;
@@ -110,7 +118,10 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
               if (userMarker) userMarker.setLatLng([data.lat, data.lng]);
             }
           } catch(err) {}
-        });
+        }
+        
+        window.addEventListener('message', handleMessage);
+        document.addEventListener('message', handleMessage);
       </script>
     </body>
     </html>

@@ -102,6 +102,7 @@ export default function WalletScreen() {
               <View style={styles.entryBody}>
                 <Text style={styles.entryKind}>{item.entry_kind.replace(/_/g, ' ')}</Text>
                 <Text style={styles.entryDate}>{new Date(item.created_at).toLocaleString()}</Text>
+                <Text style={styles.entryTxId} numberOfLines={1} ellipsizeMode="middle">TxID: {item.group_id || item.id}</Text>
               </View>
               <Text style={[styles.entryAmount, { color: isCredit ? theme.colors.success : theme.colors.error }]}>
                 {isCredit ? '+' : '-'}{item.amount} ◆
@@ -153,6 +154,7 @@ const styles = StyleSheet.create({
   entryBody: { flex: 1 },
   entryKind: { fontSize: 14, fontWeight: '600', color: theme.colors.text, textTransform: 'capitalize', fontFamily: theme.fonts.bold },
   entryDate: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular },
+  entryTxId: { fontSize: 10, color: theme.colors.neutral[400], marginTop: 2, fontFamily: theme.fonts.regular },
   entryAmount: { fontSize: 16, fontWeight: '700', fontFamily: theme.fonts.bold },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },

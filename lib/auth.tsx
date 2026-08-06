@@ -132,7 +132,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         options: { data: { full_name: name } },
       });
-      if (error) return { error: error.message };
+      if (error) {
+        if (error.message.includes('already registered') || error.message.includes('already exists')) {
+          return { error: 'Email already exists.' };
+        }
+        return { error: error.message };
+      }
+      
+      if (data?.user && data.user.identities && data.user.identities.length === 0) {
+        return { error: 'Email already exists.' };
+      }
+
       if (data?.user) {
         await supabase.from('users').upsert(
           {
@@ -143,10 +153,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           { onConflict: 'id' }
         );
       }
+      
       if (data?.session && data?.user) {
         setSession(data.session);
         await loadProfile(data.user.id);
+        return { error: null };
+      } else if (data?.user && !data?.session) {
+        return { error: 'verification_required' };
       }
+      
       return { error: null };
     } catch (err: any) {
       return { error: err?.message || 'Sign up failed.' };

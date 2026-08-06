@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS ratings (
 -- ledger_entries
 CREATE TABLE IF NOT EXISTS ledger_entries (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id uuid,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   exchange_id uuid REFERENCES exchanges(id) ON DELETE SET NULL,
   entry_type text NOT NULL CHECK (entry_type IN ('credit', 'debit')),
@@ -299,7 +300,8 @@ CREATE OR REPLACE FUNCTION append_ledger(
   p_entry_type text,
   p_amount integer,
   p_entry_kind text,
-  p_note text DEFAULT NULL
+  p_note text DEFAULT NULL,
+  p_group_id uuid DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -320,8 +322,8 @@ BEGIN
     v_balance := v_balance - p_amount;
   END IF;
 
-  INSERT INTO ledger_entries (user_id, exchange_id, entry_type, amount, balance_after, entry_kind, note)
-  VALUES (p_user_id, p_exchange_id, p_entry_type, p_amount, v_balance, p_entry_kind::ledger_entry_kind, p_note);
+  INSERT INTO ledger_entries (user_id, exchange_id, entry_type, amount, balance_after, entry_kind, note, group_id)
+  VALUES (p_user_id, p_exchange_id, p_entry_type, p_amount, v_balance, p_entry_kind::ledger_entry_kind, p_note, p_group_id);
 END;
 $$;
 
@@ -535,6 +537,7 @@ DECLARE
   v_sender uuid;
   v_recipient uuid;
   v_bal bigint;
+  v_group_id uuid;
 BEGIN
   v_sender := auth.uid();
   IF v_sender IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
@@ -548,8 +551,9 @@ BEGIN
   INTO v_bal FROM ledger_entries WHERE user_id = v_sender;
   IF v_bal < p_amount THEN RAISE EXCEPTION 'Insufficient balance (have %, need %)', v_bal, p_amount; END IF;
 
-  PERFORM append_ledger(v_sender, NULL, 'debit', p_amount, 'p2p_send', 'Sent to ' || p_recipient_email);
-  PERFORM append_ledger(v_recipient, NULL, 'credit', p_amount, 'p2p_receive', 'Received from peer');
+  v_group_id := gen_random_uuid();
+  PERFORM append_ledger(v_sender, NULL, 'debit', p_amount, 'p2p_send', 'Sent to ' || p_recipient_email, v_group_id);
+  PERFORM append_ledger(v_recipient, NULL, 'credit', p_amount, 'p2p_receive', 'Received from peer', v_group_id);
 
   RETURN true;
 END;

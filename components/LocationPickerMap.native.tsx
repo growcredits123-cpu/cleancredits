@@ -12,12 +12,13 @@ interface LocationPickerMapProps {
   onLocationSelect: (coords: { lat: number; lng: number }) => void;
   pickerRef?: React.RefObject<LocationPickerRef | null>;
   height?: number;
+  onMapInteraction?: (active: boolean) => void;
 }
 
 const DEFAULT_LAT = 15.1636;
 const DEFAULT_LNG = 120.5715;
 
-export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, height = 220 }: LocationPickerMapProps) {
+export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, height = 220, onMapInteraction }: LocationPickerMapProps) {
   const webviewRef = useRef<WebView>(null);
   const lat = initialCoords?.lat ?? DEFAULT_LAT;
   const lng = initialCoords?.lng ?? DEFAULT_LNG;
@@ -101,11 +102,13 @@ export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, 
         var marker = L.marker([${lat}, ${lng}], { icon: pinIcon, draggable: true }).addTo(map);
 
         function sendLocation(lat, lng) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'locationSelect',
-            lat: Number(lat.toFixed(6)),
-            lng: Number(lng.toFixed(6))
-          }));
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'locationSelect',
+              lat: Number(lat.toFixed(6)),
+              lng: Number(lng.toFixed(6))
+            }));
+          }
         }
 
         marker.on('dragend', function(e) {
@@ -118,7 +121,7 @@ export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, 
           sendLocation(e.latlng.lat, e.latlng.lng);
         });
 
-        document.addEventListener('message', function(e) {
+        function handleMessage(e) {
           try {
             var data = JSON.parse(e.data);
             if (data.type === 'setCenter') {
@@ -126,7 +129,27 @@ export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, 
               marker.setLatLng([data.lat, data.lng]);
             }
           } catch(err) {}
-        });
+        }
+
+        window.addEventListener('message', handleMessage);
+        document.addEventListener('message', handleMessage);
+
+        var mapEl = document.getElementById('map');
+        mapEl.addEventListener('touchstart', function() {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapTouch', active: true }));
+          }
+        }, { passive: true });
+        mapEl.addEventListener('touchend', function() {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapTouch', active: false }));
+          }
+        }, { passive: true });
+        mapEl.addEventListener('touchcancel', function() {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapTouch', active: false }));
+          }
+        }, { passive: true });
       </script>
     </body>
     </html>
@@ -144,6 +167,8 @@ export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, 
             const data = JSON.parse(event.nativeEvent.data);
             if (data.type === 'locationSelect') {
               onLocationSelect({ lat: data.lat, lng: data.lng });
+            } else if (data.type === 'mapTouch') {
+              onMapInteraction?.(data.active);
             }
           } catch (e) {}
         }}
@@ -151,6 +176,7 @@ export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, 
         domStorageEnabled={true}
         allowFileAccess={true}
         mixedContentMode="always"
+        nestedScrollEnabled={true}
       />
     </View>
   );
