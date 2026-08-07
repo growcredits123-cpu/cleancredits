@@ -36,7 +36,30 @@ export default function WalletScreen() {
 
   useEffect(() => {
     load();
-  }, [load]);
+
+    if (!session) return;
+
+    // Set up live real-time update for ledger entries
+    const channel = supabase
+      .channel('wallet_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ledger_entries',
+          filter: `user_id=eq.${session.user.id}`
+        },
+        () => {
+          load();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load, session]);
 
   async function handleSend() {
     setSendError(null);

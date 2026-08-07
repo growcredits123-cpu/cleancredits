@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS items (
   description text NOT NULL DEFAULT '',
   category item_category NOT NULL DEFAULT 'other',
   condition item_condition NOT NULL DEFAULT 'good',
-  token_price integer NOT NULL CHECK (token_price >= 0),
+  token_price bigint NOT NULL CHECK (token_price >= 0),
   photo_url text,
   lat double precision NOT NULL,
   lng double precision NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   exchange_id uuid REFERENCES exchanges(id) ON DELETE SET NULL,
   entry_type text NOT NULL CHECK (entry_type IN ('credit', 'debit')),
-  amount integer NOT NULL CHECK (amount > 0),
+  amount bigint NOT NULL CHECK (amount > 0),
   balance_after bigint NOT NULL,
   entry_kind ledger_entry_kind NOT NULL,
   note text,
@@ -298,7 +298,7 @@ CREATE OR REPLACE FUNCTION append_ledger(
   p_user_id uuid,
   p_exchange_id uuid,
   p_entry_type text,
-  p_amount integer,
+  p_amount bigint,
   p_entry_kind text,
   p_note text DEFAULT NULL,
   p_group_id uuid DEFAULT NULL
@@ -397,7 +397,7 @@ DECLARE
   v_rec uuid;
   v_own uuid;
   v_item_id uuid;
-  v_price integer;
+  v_price bigint;
   v_bal bigint;
 BEGIN
   SELECT requester_id, owner_id, item_id INTO v_rec, v_own, v_item_id
@@ -503,7 +503,7 @@ DECLARE
   v_own uuid;
   v_item_id uuid;
   v_status text;
-  v_price integer;
+  v_price bigint;
 BEGIN
   SELECT requester_id, owner_id, item_id, status INTO v_rec, v_own, v_item_id, v_status
   FROM exchanges WHERE id = p_exchange_id;
@@ -527,7 +527,7 @@ END;
 $$;
 
 -- p2p_transfer
-CREATE OR REPLACE FUNCTION p2p_transfer(p_recipient_email text, p_amount integer)
+CREATE OR REPLACE FUNCTION p2p_transfer(p_recipient_email text, p_amount bigint)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -560,7 +560,7 @@ END;
 $$;
 
 -- admin_issue_tokens
-CREATE OR REPLACE FUNCTION admin_issue_tokens(p_user_id uuid, p_amount integer, p_note text)
+CREATE OR REPLACE FUNCTION admin_issue_tokens(p_user_id uuid, p_amount bigint, p_note text)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -573,7 +573,7 @@ END;
 $$;
 
 -- approve_recycling_spot & reject_recycling_spot
-CREATE OR REPLACE FUNCTION approve_recycling_spot(p_spot_id uuid, p_reward integer DEFAULT 5)
+CREATE OR REPLACE FUNCTION approve_recycling_spot(p_spot_id uuid, p_reward bigint DEFAULT 5)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -624,6 +624,11 @@ BEGIN
 
   BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE items;
+  EXCEPTION WHEN duplicate_object OR sqlstate '42710' THEN null;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE ledger_entries;
   EXCEPTION WHEN duplicate_object OR sqlstate '42710' THEN null;
   END;
 END $$;
