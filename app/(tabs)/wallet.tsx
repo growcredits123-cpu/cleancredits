@@ -18,6 +18,7 @@ export default function WalletScreen() {
   const [sendAmount, setSendAmount] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [showPurchase, setShowPurchase] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -96,10 +97,16 @@ export default function WalletScreen() {
         ) : (
           <Text style={styles.balanceValue}>{balance.toLocaleString()} ◆</Text>
         )}
-        <TouchableOpacity style={styles.sendBtn} onPress={() => setShowSend(true)}>
-          <Send size={16} color={theme.colors.primary[700]} />
-          <Text style={styles.sendBtnText}>Send tokens</Text>
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setShowSend(true)}>
+            <Send size={16} color={theme.colors.primary[700]} />
+            <Text style={styles.sendBtnText}>Send</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setShowPurchase(true)}>
+            <Gift size={16} color={theme.colors.primary[700]} />
+            <Text style={styles.sendBtnText}>Purchase</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.historyHeader}>
@@ -153,6 +160,29 @@ export default function WalletScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showPurchase} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Purchase tokens</Text>
+            <Text style={styles.modalLabel}>Select a package (Demo)</Text>
+            
+            <TouchableOpacity style={styles.packageBtn} onPress={() => { setShowPurchase(false); alert('In-app purchases coming soon!'); }}>
+              <Text style={styles.packageText}>100 Tokens - $4.99</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.packageBtn} onPress={() => { setShowPurchase(false); alert('In-app purchases coming soon!'); }}>
+              <Text style={styles.packageText}>500 Tokens - $19.99</Text>
+            </TouchableOpacity>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowPurchase(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -165,7 +195,8 @@ const styles = StyleSheet.create({
   balanceCard: { margin: 16, borderRadius: theme.radius.xl, padding: 24, backgroundColor: theme.colors.primary[600], alignItems: 'center' },
   balanceLabel: { fontSize: 13, color: theme.colors.primary[50], fontFamily: theme.fonts.regular, textTransform: 'uppercase', letterSpacing: 1 },
   balanceValue: { fontSize: 44, fontWeight: '700', color: '#fff', fontFamily: theme.fonts.bold, marginTop: 8 },
-  sendBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, marginTop: 16 },
+  actionButtons: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
   sendBtnText: { fontSize: 14, fontWeight: '700', color: theme.colors.primary[700], fontFamily: theme.fonts.bold },
   historyHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   historyTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.neutral[700], fontFamily: theme.fonts.bold },
@@ -190,4 +221,6 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: 15, fontWeight: '600', color: theme.colors.neutral[600], fontFamily: theme.fonts.bold },
   modalSend: { flex: 1, paddingVertical: 14, borderRadius: theme.radius.md, backgroundColor: theme.colors.primary[500], alignItems: 'center' },
   modalSendText: { fontSize: 15, fontWeight: '700', color: '#fff', fontFamily: theme.fonts.bold },
+  packageBtn: { padding: 16, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, marginBottom: 10, alignItems: 'center' },
+  packageText: { fontSize: 16, color: theme.colors.text, fontFamily: theme.fonts.bold },
 });

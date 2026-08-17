@@ -53,3 +53,39 @@ export async function resolveReport(reportId: string) {
   const { error } = await adminSupabase.from('reports').update({ status: 'resolved' }).eq('id', reportId);
   return { error: error?.message || null };
 }
+
+export async function updateUser(userId: string, name: string, email: string) {
+  const adminSupabase = getAdminClient();
+  const { error } = await adminSupabase.from('users').update({ name, email }).eq('id', userId);
+  return { error: error?.message || null };
+}
+
+export async function toggleRequireID(userId: string, requireId: boolean) {
+  const adminSupabase = getAdminClient();
+  const { error } = await adminSupabase.from('users').update({ id_verified: !requireId }).eq('id', userId);
+  return { error: error?.message || null };
+}
+
+export async function updateGlobalRequireId(requireId: boolean) {
+  const adminSupabase = getAdminClient();
+  const { data: adminUser } = await adminSupabase.from('users').select('id').eq('is_admin', true).limit(1).single();
+  if (!adminUser) return { error: 'No admin user found to log event' };
+
+  const { error } = await adminSupabase.from('app_events').insert({
+    user_id: adminUser.id,
+    event_type: 'global_settings',
+    payload: { require_id: requireId }
+  });
+  return { error: error?.message || null };
+}
+
+export async function resolveAppraisal(eventId: string, appraisedValue: number) {
+  const adminSupabase = getAdminClient();
+  const { error } = await adminSupabase.from('app_events').update({ 
+    resolved: true,
+    payload: { appraised_value: appraisedValue } 
+  }).eq('id', eventId);
+  return { error: error?.message || null };
+}
+
+

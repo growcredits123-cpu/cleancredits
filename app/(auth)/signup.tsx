@@ -71,7 +71,7 @@ export default function SignupScreen() {
                 resizeMode="cover" 
               />
             </View>
-            <Text style={styles.title}>Join GrowCredits</Text>
+            <Text style={styles.title}>Join FruitMap</Text>
             <Text style={styles.subtitle}>Create an account to start earning</Text>
           </Animated.View>
 

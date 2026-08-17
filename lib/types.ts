@@ -24,7 +24,9 @@ export interface User {
   email: string;
   avatar_url: string | null;
   rating_avg: number;
+  reviews_count: number;
   is_blocked: boolean;
+  id_verified: boolean;
   created_at: string;
 }
 

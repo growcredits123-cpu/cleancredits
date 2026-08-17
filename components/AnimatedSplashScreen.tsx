@@ -93,7 +93,7 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
             resizeMode="cover"
           />
         </View>
-        <Animated.Text style={[styles.text, textStyle]}>GrowCredits</Animated.Text>
+        <Animated.Text style={[styles.text, textStyle]}>FruitMap</Animated.Text>
       </Animated.View>
     </Animated.View>
   );

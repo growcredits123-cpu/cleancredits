@@ -8,8 +8,8 @@ export function middleware(req: NextRequest) {
     const authValue = basicAuth.split(' ')[1];
     const [user, pwd] = atob(authValue).split(':');
 
-    // The user requested password: GrowCredits@@2026
-    if (user === 'admin' && pwd === 'GrowCredits@@2026') {
+    // The user requested password: FruitMap@@2026
+    if (user === 'admin' && pwd === 'FruitMap@@2026') {
       return NextResponse.next();
     }
   }

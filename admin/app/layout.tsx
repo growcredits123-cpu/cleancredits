@@ -1,17 +1,19 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LayoutDashboard, Coins, MapPin, ShieldAlert, Leaf } from 'lucide-react';
+import { LayoutDashboard, Coins, MapPin, ShieldAlert, Leaf, Users, Star } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'GrowCredits Admin',
-  description: 'Admin panel for GrowCredits marketplace',
+  title: 'FruitMap Admin',
+  description: 'Admin panel for FruitMap marketplace',
 };
 
 const nav = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/users', label: 'Users', icon: Users },
   { href: '/tokens', label: 'Issue Tokens', icon: Coins },
   { href: '/recycling', label: 'Recycling Review', icon: MapPin },
+  { href: '/appraisals', label: 'Appraisals', icon: Star },
   { href: '/moderation', label: 'Moderation', icon: ShieldAlert },
 ];
 
@@ -25,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="w-8 h-8 rounded-lg bg-eco-500 flex items-center justify-center">
                 <Leaf className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg">GrowCredits</span>
+              <span className="font-bold text-lg">FruitMap</span>
               <span className="text-xs text-gray-400 ml-1">Admin</span>
             </div>
             <nav className="flex md:flex-col overflow-x-auto p-2 md:p-3 space-x-2 md:space-x-0 md:space-y-1">

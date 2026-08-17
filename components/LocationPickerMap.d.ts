@@ -9,6 +9,7 @@ export interface LocationPickerMapProps {
   onLocationSelect: (coords: { lat: number; lng: number }) => void;
   pickerRef?: React.RefObject<LocationPickerRef | null>;
   height?: number;
+  onMapInteraction?: (active: boolean) => void;
 }
 
 export declare function LocationPickerMap(props: LocationPickerMapProps): React.JSX.Element;

@@ -42,7 +42,9 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
       <style>
         body { padding: 0; margin: 0; background-color: #f1f5f9; }
         html, body, #map { height: 100%; width: 100%; }
-        .custom-marker { background: #059669; border: 2px solid white; border-radius: 50%; width: 26px; height: 26px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .custom-marker { background: #ea580c; border: 2px solid white; border-radius: 50%; width: 22px; height: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); flex-shrink: 0; }
+        .marker-wrapper { display: flex; align-items: center; gap: 6px; }
+        .marker-label { background: rgba(255,255,255,0.85); padding: 2px 8px; border-radius: 12px; font-family: sans-serif; font-size: 12px; font-weight: 600; color: #1f2937; box-shadow: 0 1px 3px rgba(0,0,0,0.2); white-space: nowrap; }
         .user-marker { background: #3b82f6; border: 3px solid white; border-radius: 50%; width: 20px; height: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
         .locate-btn { position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: white; padding: 10px; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; font-size: 20px; line-height: 20px; text-align: center; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
       </style>
@@ -82,8 +84,10 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
           }
         }
 
-        function addMarker(id, lat, lng) {
-          var icon = L.divIcon({ className: 'custom-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
+        function addMarker(id, lat, lng, title) {
+          var safeTitle = (title || 'Item').replace(/['"]/g, '');
+          var htmlStr = '<div class="custom-marker"></div><div class="marker-label">' + safeTitle + '</div>';
+          var icon = L.divIcon({ className: 'marker-wrapper', html: htmlStr, iconSize: null, iconAnchor: [13, 13] });
           var marker = L.marker([lat, lng], { icon: icon }).addTo(map);
           marker.on('click', function() {
             safePostMessage({ type: 'markerPress', id: id });
@@ -109,7 +113,7 @@ export function MapPanel({ region, onRegionChange, items, onItemPress, showsUser
               for (var id in markers) { map.removeLayer(markers[id]); }
               markers = {};
               if (data.items) {
-                data.items.forEach(function(item) { addMarker(item.id, item.lat, item.lng); });
+                data.items.forEach(function(item) { addMarker(item.id, item.lat, item.lng, item.title); });
               }
             } else if (data.type === 'setCenter') {
               currentLat = data.lat;

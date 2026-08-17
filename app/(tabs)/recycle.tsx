@@ -214,7 +214,7 @@ export default function RecycleScreen() {
               onLocationSelect={(selectedCoords) => setCoords(selectedCoords)}
               pickerRef={pickerRef}
               height={200}
-              onMapInteraction={(active) => setMapScrollEnabled(!active)}
+              onMapInteraction={(active: boolean) => setMapScrollEnabled(!active)}
             />
 
             <View style={styles.locationMetaRow}>

@@ -1,17 +1,19 @@
 import { getAdminClient } from '@/lib/supabase';
-import { Users, ArrowDownUp, Coins, MapPin, Star, Flag } from 'lucide-react';
+import { Users, ArrowDownUp, Coins, MapPin, Star, Flag, Settings } from 'lucide-react';
+import { GlobalSettingsToggle } from './GlobalSettingsToggle';
 
 export const dynamic = 'force-dynamic';
 
 async function getStats() {
   const adminSupabase = getAdminClient();
-  const [users, exchanges, ledger, recycling, ratings, reports] = await Promise.all([
+  const [users, exchanges, ledger, recycling, ratings, reports, settings] = await Promise.all([
     adminSupabase.from('users').select('id', { count: 'exact', head: true }),
     adminSupabase.from('exchanges').select('id, status', { count: 'exact' }),
     adminSupabase.from('ledger_entries').select('entry_type, amount'),
     adminSupabase.from('recycling_spots').select('id, status', { count: 'exact' }),
     adminSupabase.from('ratings').select('id', { count: 'exact', head: true }),
     adminSupabase.from('reports').select('id, status', { count: 'exact' }),
+    adminSupabase.from('app_events').select('payload').eq('event_type', 'global_settings').order('created_at', { ascending: false }).limit(1),
   ]);
 
   const totalUsers = users.count || 0;
@@ -24,8 +26,10 @@ async function getStats() {
   );
   const pendingRecycling = (recycling.data || []).filter((r: any) => r.status === 'pending').length;
   const openReports = (reports.data || []).filter((r: any) => r.status === 'open').length;
+  
+  const requireId = settings.data?.[0]?.payload?.require_id === true;
 
-  return { totalUsers, activeExchanges, totalTokens, pendingRecycling, totalRatings: ratings.count || 0, openReports };
+  return { totalUsers, activeExchanges, totalTokens, pendingRecycling, totalRatings: ratings.count || 0, openReports, requireId };
 }
 
 export default async function DashboardPage() {
@@ -43,7 +47,14 @@ export default async function DashboardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-      <p className="text-gray-500 mb-8">Overview of the GrowCredits marketplace</p>
+      <p className="text-gray-500 mb-8">Overview of the FruitMap marketplace</p>
+
+      <div className="mb-8 p-6 bg-white rounded-xl border border-gray-200">
+        <h2 className="font-bold text-lg mb-2 flex items-center gap-2">
+          <Settings className="w-5 h-5" /> Global Settings
+        </h2>
+        <GlobalSettingsToggle initialRequireId={stats.requireId} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {cards.map((card) => (

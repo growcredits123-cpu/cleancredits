@@ -55,7 +55,7 @@ export default function LoginScreen() {
               />
             </View>
             <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to access your GrowCredits</Text>
+            <Text style={styles.subtitle}>Sign in to access your FruitMap</Text>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(150).duration(600).springify()} style={styles.form}>

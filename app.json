@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "GrowCredits",
+    "name": "FruitMap",
     "slug": "grow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "growcredits",
+    "scheme": "fruitmap",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
@@ -23,7 +23,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.growcredits123steam.grow",
+      "package": "com.fruitmap.app",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDummyKeyDummyKeyDummyKeyDummyKeyDum"
@@ -55,19 +55,19 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow GrowCredits to use your location."
+          "locationAlwaysAndWhenInUsePermission": "Allow FruitMap to use your location."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow GrowCredits to access your camera."
+          "cameraPermission": "Allow FruitMap to access your camera."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow GrowCredits to access your photos."
+          "photosPermission": "Allow FruitMap to access your photos."
         }
       ]
     ],
