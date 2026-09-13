@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { User } from './types';
@@ -13,6 +15,7 @@ interface AuthContextValue {
   signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -21,6 +24,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const url = Linking.useURL();
+
+  useEffect(() => {
+    const rawUrl = url || (typeof window !== 'undefined' ? window.location.href : null);
+    if (!rawUrl) return;
+    
+    const parseUrl = async () => {
+      try {
+        const hash = rawUrl.split('#')[1];
+        if (!hash) return;
+        
+        const params = new URLSearchParams(hash);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        
+        if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+          if (error) console.error('Deep link session error:', error.message);
+        }
+      } catch (e) {
+        console.error('Failed to parse deep link URL', e);
+      }
+    };
+    
+    parseUrl();
+  }, [url]);
 
   async function loadProfile(uid: string) {
     try {
@@ -130,7 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: { 
+          data: { full_name: name },
+          emailRedirectTo: Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : Linking.createURL('/'),
+        },
       });
       if (error) {
         if (error.message.includes('already registered') || error.message.includes('already exists')) {
@@ -191,6 +226,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session) await loadProfile(session.user.id);
   }
 
+  async function resetPassword(email: string) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : Linking.createURL('/(auth)/reset-password'),
+      });
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (err: any) {
+      return { error: err?.message || 'Password reset failed.' };
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -203,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithApple,
         signOut,
         refreshProfile,
+        resetPassword,
       }}
     >
       {children}

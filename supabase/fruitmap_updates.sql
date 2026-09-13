@@ -17,6 +17,7 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS appraised_value bigint;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS id_verified boolean DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reviews_count integer DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS rating_avg numeric(3,2) DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false;
 
 -- 4. Create table for Land Ownership Proofs
 CREATE TABLE IF NOT EXISTS land_ownership_proofs (
@@ -27,7 +28,9 @@ CREATE TABLE IF NOT EXISTS land_ownership_proofs (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE land_ownership_proofs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "land_proofs_select_all" ON land_ownership_proofs;
 CREATE POLICY "land_proofs_select_all" ON land_ownership_proofs FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "land_proofs_insert_own" ON land_ownership_proofs;
 CREATE POLICY "land_proofs_insert_own" ON land_ownership_proofs FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
 -- 5. Create table for ID Verification
@@ -39,9 +42,12 @@ CREATE TABLE IF NOT EXISTS id_verifications (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE id_verifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "id_verifications_select_own" ON id_verifications;
 CREATE POLICY "id_verifications_select_own" ON id_verifications FOR SELECT TO authenticated USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "id_verifications_insert_own" ON id_verifications;
 CREATE POLICY "id_verifications_insert_own" ON id_verifications FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 -- Admin can see all
+DROP POLICY IF EXISTS "id_verifications_admin_all" ON id_verifications;
 CREATE POLICY "id_verifications_admin_all" ON id_verifications FOR ALL TO authenticated USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true)
 );
@@ -59,10 +65,13 @@ CREATE TABLE IF NOT EXISTS access_requests (
   UNIQUE(item_id, requester_id)
 );
 ALTER TABLE access_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "access_req_select" ON access_requests;
 CREATE POLICY "access_req_select" ON access_requests FOR SELECT TO authenticated
   USING (auth.uid() = requester_id OR auth.uid() = owner_id);
+DROP POLICY IF EXISTS "access_req_insert" ON access_requests;
 CREATE POLICY "access_req_insert" ON access_requests FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = requester_id);
+DROP POLICY IF EXISTS "access_req_update_owner" ON access_requests;
 CREATE POLICY "access_req_update_owner" ON access_requests FOR UPDATE TO authenticated
   USING (auth.uid() = owner_id);
 
@@ -78,7 +87,9 @@ CREATE TABLE IF NOT EXISTS reviews (
   UNIQUE(item_id, reviewer_id)
 );
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "reviews_select_all" ON reviews;
 CREATE POLICY "reviews_select_all" ON reviews FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "reviews_insert_own" ON reviews;
 CREATE POLICY "reviews_insert_own" ON reviews FOR INSERT TO authenticated WITH CHECK (auth.uid() = reviewer_id);
 
 -- 8. Function: update user rating_avg and reviews_count automatically on new review
@@ -101,7 +112,9 @@ CREATE TRIGGER trg_update_user_rating
 
 -- 9. Storage buckets
 INSERT INTO storage.buckets (id, name, public) VALUES ('verification-docs', 'verification-docs', false) ON CONFLICT (id) DO NOTHING;
+DROP POLICY IF EXISTS "verifications_insert_own" ON storage.objects;
 CREATE POLICY "verifications_insert_own" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'verification-docs');
+DROP POLICY IF EXISTS "verifications_read_own" ON storage.objects;
 CREATE POLICY "verifications_read_own" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'verification-docs' AND (auth.uid() = owner));
 
 -- 10. App events table (for appraisal requests)
@@ -114,8 +127,11 @@ CREATE TABLE IF NOT EXISTS app_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE app_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "app_events_insert_own" ON app_events;
 CREATE POLICY "app_events_insert_own" ON app_events FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "app_events_select_own" ON app_events;
 CREATE POLICY "app_events_select_own" ON app_events FOR SELECT TO authenticated USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "app_events_admin" ON app_events;
 CREATE POLICY "app_events_admin" ON app_events FOR ALL TO authenticated USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true)
 );

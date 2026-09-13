@@ -45,13 +45,13 @@ export function LocationPickerMap({ initialCoords, onLocationSelect, pickerRef, 
           width: 30px;
           height: 30px;
           border-radius: 50% 50% 50% 0;
-          background: #059669;
+          background: #0284c7;
           position: absolute;
           transform: rotate(-45deg);
           left: 50%;
           top: 50%;
           margin: -20px 0 0 -15px;
-          box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+          box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
           border: 2px solid #ffffff;
         }
         .pin-marker::after {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl, Modal, TextInput, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl, Modal, TextInput, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Star, LogOut, Package, MapPin, Shield, Camera, X } from 'lucide-react-native';
@@ -36,6 +36,30 @@ export default function ProfileScreen() {
 
   const { data: items = [], error, mutate, isValidating } = useSWR(session ? `profile_items_${session.user.id}` : null, fetcher);
 
+  const requestsFetcher = async () => {
+    if (!session) return [];
+    const { data, error } = await supabase
+      .from('access_requests')
+      .select('id, item_id, token_amount, status, requester:users!access_requests_requester_id_fkey(name), item:items!access_requests_item_id_fkey(title)')
+      .eq('owner_id', session.user.id)
+      .eq('status', 'pending');
+    if (error) throw error;
+    return data || [];
+  };
+
+  const { data: pendingRequests = [], mutate: mutateRequests } = useSWR(session ? `profile_requests_${session.user.id}` : null, requestsFetcher);
+
+  async function handleApproveRequest(requestId: string) {
+    await supabase.from('access_requests').update({ status: 'approved' }).eq('id', requestId);
+    Alert.alert('Approved', 'Access granted.');
+    mutateRequests();
+  }
+
+  async function handleRejectRequest(requestId: string) {
+    await supabase.from('access_requests').update({ status: 'rejected' }).eq('id', requestId);
+    mutateRequests();
+  }
+
   useEffect(() => {
     if (!session) return;
     const channel = supabase
@@ -50,6 +74,26 @@ export default function ProfileScreen() {
     };
   }, [session, mutate]);
 
+  async function getAssetBase64(asset: ImagePicker.ImagePickerAsset): Promise<string> {
+    if (asset.base64) return asset.base64;
+    try {
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return '';
+    }
+  }
+
   async function handleUploadLandProof() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -61,14 +105,16 @@ export default function ProfileScreen() {
         base64: true,
       });
 
-      if (result.canceled || !result.assets[0].base64) return;
+      if (result.canceled || !result.assets[0]) return;
       
       setUploadBusy(true);
+      const b64 = await getAssetBase64(result.assets[0]);
+      if (!b64) throw new Error('Could not read image data.');
       const filePath = `${session!.user.id}/land_${Date.now()}.jpg`;
       
       const { error: uploadError } = await supabase.storage
         .from('verification-docs')
-        .upload(filePath, decode(result.assets[0].base64), { contentType: 'image/jpeg' });
+        .upload(filePath, decode(b64), { contentType: 'image/jpeg' });
         
       if (uploadError) throw new Error(uploadError.message);
       
@@ -100,14 +146,16 @@ export default function ProfileScreen() {
         base64: true,
       });
 
-      if (result.canceled || !result.assets[0].base64) return;
+      if (result.canceled || !result.assets[0]) return;
       
       setUploadBusy(true);
+      const b64 = await getAssetBase64(result.assets[0]);
+      if (!b64) throw new Error('Could not read image data.');
       const filePath = `${session!.user.id}/id_${Date.now()}.jpg`;
       
       const { error: uploadError } = await supabase.storage
         .from('verification-docs')
-        .upload(filePath, decode(result.assets[0].base64), { contentType: 'image/jpeg' });
+        .upload(filePath, decode(b64), { contentType: 'image/jpeg' });
         
       if (uploadError) throw new Error(uploadError.message);
       
@@ -155,8 +203,8 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
-        refreshControl={<RefreshControl refreshing={isValidating} onRefresh={() => { mutate(); refreshProfile(); }} tintColor={theme.colors.primary[500]} />}
+        contentContainerStyle={{ paddingBottom: 32, maxWidth: 720, width: '100%', alignSelf: 'center' }}
+        refreshControl={<RefreshControl refreshing={isValidating} onRefresh={() => { mutate(); mutateRequests(); refreshProfile(); }} tintColor={theme.colors.primary[500]} />}
       >
         <View style={styles.header}>
           <View style={styles.avatar}>
@@ -204,6 +252,28 @@ export default function ProfileScreen() {
           <Text style={styles.actionText}>Upload ID Document</Text>
         </TouchableOpacity>
       </View>
+
+      {pendingRequests.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pending Pick Requests</Text>
+          {pendingRequests.map((req: any) => (
+            <View key={req.id} style={styles.pendingCard}>
+              <View style={styles.pendingInfo}>
+                <Text style={styles.pendingName}>{req.requester?.name || 'User'}</Text>
+                <Text style={styles.pendingItem}>wants to pick from {req.item?.title}</Text>
+              </View>
+              <View style={styles.pendingActions}>
+                <TouchableOpacity style={styles.approveBtn} onPress={() => handleApproveRequest(req.id)}>
+                  <Text style={styles.approveBtnText}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rejectBtn} onPress={() => handleRejectRequest(req.id)}>
+                  <Text style={styles.rejectBtnText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your listings</Text>
@@ -340,8 +410,33 @@ const styles = StyleSheet.create({
   signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 16, marginTop: 24, paddingVertical: 14, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.error + '30' },
   signOutText: { fontSize: 15, fontWeight: '600', color: theme.colors.error, fontFamily: theme.fonts.bold },
   
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  pendingCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 8 },
+  pendingInfo: { flex: 1, marginRight: 8 },
+  pendingName: { fontSize: 14, fontWeight: '600', color: theme.colors.text, fontFamily: theme.fonts.bold },
+  pendingItem: { fontSize: 12, color: theme.colors.textMuted, fontFamily: theme.fonts.regular, marginTop: 2 },
+  pendingActions: { flexDirection: 'row', gap: 8 },
+  approveBtn: { backgroundColor: '#dcfce7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  approveBtnText: { color: theme.colors.success, fontSize: 13, fontWeight: '700', fontFamily: theme.fonts.bold },
+  rejectBtn: { backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  rejectBtnText: { color: theme.colors.error, fontSize: 13, fontWeight: '700', fontFamily: theme.fonts.bold },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : undefined,
+    padding: Platform.OS === 'web' ? 20 : 0,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderRadius: Platform.OS === 'web' ? 24 : undefined,
+    maxWidth: Platform.OS === 'web' ? 480 : undefined,
+    width: '100%',
+    padding: 24,
+    paddingBottom: 36,
+  },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   modalDesc: { fontSize: 14, color: theme.colors.textMuted, marginBottom: 20, fontFamily: theme.fonts.regular, lineHeight: 20 },

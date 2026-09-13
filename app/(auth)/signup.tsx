@@ -67,8 +67,8 @@ export default function SignupScreen() {
             <View style={styles.logo}>
               <Image 
                 source={require('@/assets/images/icon.png')} 
-                style={{ width: 80, height: 80, borderRadius: 24 }} 
-                resizeMode="cover" 
+                style={{ width: 72, height: 72 }} 
+                resizeMode="contain" 
               />
             </View>
             <Text style={styles.title}>Join FruitMap</Text>
@@ -149,7 +149,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { flexGrow: 1, paddingHorizontal: 24, justifyContent: 'center', paddingBottom: 40 },
-  brand: { alignItems: 'center', marginBottom: 40, marginTop: 20 },
+  brand: { alignItems: 'center', marginBottom: 36, marginTop: 20, maxWidth: 440, width: '100%', alignSelf: 'center' },
   logo: {
     width: 80,
     height: 80,
@@ -159,10 +159,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
     ...theme.elevation.md,
+    overflow: 'hidden',
   },
   title: { fontSize: 32, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold, letterSpacing: -0.5 },
   subtitle: { fontSize: 16, color: theme.colors.textMuted, marginTop: 8, fontFamily: theme.fonts.regular },
-  form: { width: '100%', gap: 16 },
+  form: { width: '100%', maxWidth: 440, alignSelf: 'center', gap: 16 },
   inputGroup: { width: '100%' },
   inputWrapper: {
     flexDirection: 'row',

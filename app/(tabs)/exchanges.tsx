@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { ArrowDownUp, Package } from 'lucide-react-native';
@@ -98,7 +98,7 @@ export default function ExchangesScreen() {
               <TouchableOpacity style={styles.card} onPress={() => router.push(`/exchange/${item.id}`)}>
                 <View style={styles.cardLeft}>
                   {item.item?.photo_url ? (
-                    <View style={styles.thumb} />
+                    <Image source={{ uri: item.item.photo_url }} style={styles.thumb} />
                   ) : (
                     <View style={[styles.thumb, styles.thumbPlaceholder]}>
                       <Package size={20} color={theme.colors.neutral[400]} />
@@ -125,9 +125,9 @@ export default function ExchangesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
-  subtitle: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12, gap: 8, backgroundColor: theme.colors.surface },
+  title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold, maxWidth: 720, width: '100%', alignSelf: 'center' },
+  subtitle: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular, maxWidth: 720, width: '100%', alignSelf: 'center' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12, gap: 8, backgroundColor: theme.colors.surface, maxWidth: 720, width: '100%', alignSelf: 'center' },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: theme.colors.neutral[100] },
   filterChipActive: { backgroundColor: theme.colors.primary[500] },
   filterText: { fontSize: 13, fontWeight: '600', color: theme.colors.neutral[600], fontFamily: theme.fonts.bold },
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyText: { fontSize: 18, fontWeight: '700', color: theme.colors.text, marginTop: 16, fontFamily: theme.fonts.bold },
   emptySubtext: { fontSize: 14, color: theme.colors.textMuted, textAlign: 'center', marginTop: 8, fontFamily: theme.fonts.regular },
-  list: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 },
+  list: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, maxWidth: 720, width: '100%', alignSelf: 'center' },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: theme.colors.border },
   cardLeft: { marginRight: 12 },
   thumb: { width: 56, height: 56, borderRadius: theme.radius.md, backgroundColor: theme.colors.neutral[200] },

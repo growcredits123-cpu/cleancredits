@@ -52,6 +52,26 @@ export default function RecycleScreen() {
     };
   }, [mutate]);
 
+  async function getAssetBase64(asset: ImagePicker.ImagePickerAsset): Promise<string> {
+    if (asset.base64) return asset.base64;
+    try {
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return '';
+    }
+  }
+
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') { setError('Photo permission denied.'); return; }
@@ -63,8 +83,9 @@ export default function RecycleScreen() {
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {
+      const b64 = await getAssetBase64(result.assets[0]);
       setImageUri(result.assets[0].uri);
-      setImageBase64(result.assets[0].base64 || null);
+      setImageBase64(b64 || null);
     }
   }
 
@@ -73,9 +94,11 @@ export default function RecycleScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { setError('Location permission denied.'); setLocating(false); return; }
-      let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      let loc = await Location.getLastKnownPositionAsync();
       if (!loc) {
-        loc = await Location.getLastKnownPositionAsync() as Location.LocationObject;
+        try {
+          loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
+        } catch (e) {}
       }
       if (loc) {
         const newCoords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
@@ -151,7 +174,7 @@ export default function RecycleScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView 
         scrollEnabled={mapScrollEnabled}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 32, maxWidth: 720, width: '100%', alignSelf: 'center' }}
         refreshControl={<RefreshControl refreshing={isValidating} onRefresh={() => mutate()} tintColor={theme.colors.primary[500]} />}
       >
         <View style={styles.header}>

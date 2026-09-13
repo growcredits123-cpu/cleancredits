@@ -45,7 +45,31 @@ export default function PostScreen() {
     captureLocation();
   }, []);
 
+  async function getAssetBase64(asset: ImagePicker.ImagePickerAsset): Promise<string> {
+    if (asset.base64) return asset.base64;
+    try {
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return '';
+    }
+  }
+
   function handlePhotoOption(index: 1 | 2) {
+    if (Platform.OS === 'web') {
+      pickImage(index);
+      return;
+    }
     Alert.alert(
       'Add Photo',
       'Choose a photo source',
@@ -71,12 +95,13 @@ export default function PostScreen() {
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {
+      const b64 = await getAssetBase64(result.assets[0]);
       if (index === 1) {
         setImageUri(result.assets[0].uri);
-        setImageBase64(result.assets[0].base64 || null);
+        setImageBase64(b64 || null);
       } else {
         setImageUri2(result.assets[0].uri);
-        setImageBase642(result.assets[0].base64 || null);
+        setImageBase642(b64 || null);
       }
     }
   }
@@ -95,12 +120,13 @@ export default function PostScreen() {
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {
+      const b64 = await getAssetBase64(result.assets[0]);
       if (index === 1) {
         setImageUri(result.assets[0].uri);
-        setImageBase64(result.assets[0].base64 || null);
+        setImageBase64(b64 || null);
       } else {
         setImageUri2(result.assets[0].uri);
-        setImageBase642(result.assets[0].base64 || null);
+        setImageBase642(b64 || null);
       }
     }
   }
@@ -130,9 +156,11 @@ export default function PostScreen() {
         setLocating(false);
         return;
       }
-      let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      let loc = await Location.getLastKnownPositionAsync();
       if (!loc) {
-        loc = await Location.getLastKnownPositionAsync() as Location.LocationObject;
+        try {
+          loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
+        } catch (e) {}
       }
       if (loc) {
         const newCoords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
@@ -358,7 +386,7 @@ export default function PostScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' },
   title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   subtitle: { fontSize: 14, color: theme.colors.textMuted, marginTop: 4, marginBottom: 20, fontFamily: theme.fonts.regular },
   categoryRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },

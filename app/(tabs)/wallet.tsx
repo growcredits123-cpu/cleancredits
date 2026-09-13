@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, ArrowDownCircle, ArrowUpCircle, Gift } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
@@ -192,15 +192,15 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   title: { fontSize: 26, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
   subtitle: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular },
-  balanceCard: { margin: 16, borderRadius: theme.radius.xl, padding: 24, backgroundColor: theme.colors.primary[600], alignItems: 'center' },
+  balanceCard: { margin: 16, borderRadius: theme.radius.xl, padding: 24, backgroundColor: theme.colors.primary[600], alignItems: 'center', maxWidth: 720, width: '100%', alignSelf: 'center' },
   balanceLabel: { fontSize: 13, color: theme.colors.primary[50], fontFamily: theme.fonts.regular, textTransform: 'uppercase', letterSpacing: 1 },
   balanceValue: { fontSize: 44, fontWeight: '700', color: '#fff', fontFamily: theme.fonts.bold, marginTop: 8 },
   actionButtons: { flexDirection: 'row', gap: 10, marginTop: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
   sendBtnText: { fontSize: 14, fontWeight: '700', color: theme.colors.primary[700], fontFamily: theme.fonts.bold },
-  historyHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  historyHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4, maxWidth: 720, width: '100%', alignSelf: 'center' },
   historyTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.neutral[700], fontFamily: theme.fonts.bold },
-  list: { paddingHorizontal: 16, paddingBottom: 24 },
+  list: { paddingHorizontal: 16, paddingBottom: 24, maxWidth: 720, width: '100%', alignSelf: 'center' },
   empty: { alignItems: 'center', paddingVertical: 40 },
   emptyText: { fontSize: 14, color: theme.colors.textMuted, marginTop: 12, fontFamily: theme.fonts.regular },
   entryRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: theme.colors.border },
@@ -210,8 +210,23 @@ const styles = StyleSheet.create({
   entryDate: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2, fontFamily: theme.fonts.regular },
   entryTxId: { fontSize: 10, color: theme.colors.neutral[400], marginTop: 2, fontFamily: theme.fonts.regular },
   entryAmount: { fontSize: 16, fontWeight: '700', fontFamily: theme.fonts.bold },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : undefined,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: Platform.OS === 'web' ? 20 : 0,
+  },
+  modalSheet: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderRadius: Platform.OS === 'web' ? 24 : undefined,
+    maxWidth: Platform.OS === 'web' ? 480 : undefined,
+    width: '100%',
+    padding: 24,
+    paddingBottom: 36,
+  },
   modalTitle: { fontSize: 22, fontWeight: '700', color: theme.colors.text, marginBottom: 16, fontFamily: theme.fonts.bold },
   modalLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.neutral[700], marginBottom: 6, marginTop: 10, fontFamily: theme.fonts.bold },
   modalInput: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.colors.text, fontFamily: theme.fonts.regular },

@@ -55,7 +55,7 @@ export default function ItemDetailScreen() {
   const load = useCallback(async () => {
     const { data, error: qErr } = await supabase
       .from('items')
-      .select('id, owner_id, title, description, photo_url, token_price, lat, lng, status, created_at, owner:users!items_owner_id_fkey(id, name, avatar_url, rating_avg, is_blocked)')
+      .select('id, owner_id, title, description, photo_url, token_price, lat, lng, status, created_at, owner:users!items_owner_id_fkey(id, name, email, avatar_url, rating_avg, is_blocked)')
       .eq('id', id)
       .maybeSingle();
     if (qErr || !data) {
@@ -111,7 +111,7 @@ export default function ItemDetailScreen() {
         if (!ownerEmail) throw new Error('Owner email not found.');
         const { data: transferOk, error: tErr } = await supabase.rpc('p2p_transfer', {
           p_recipient_email: ownerEmail,
-          p_amount: item.token_price,
+          p_amount: Number(item.token_price),
         });
         if (tErr || transferOk === false) throw new Error(tErr?.message || 'Token transfer failed. Check your balance.');
       }
@@ -174,6 +174,14 @@ export default function ItemDetailScreen() {
 
   async function handleDelete() {
     if (!item) return;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const ok = window.confirm('Remove listing? This will take the item off the map.');
+      if (ok) {
+        await supabase.from('items').update({ status: 'removed' }).eq('id', item.id);
+        router.back();
+      }
+      return;
+    }
     Alert.alert('Remove listing?', 'This will take the item off the map.', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -188,8 +196,9 @@ export default function ItemDetailScreen() {
   function handleNavigate() {
     if (!item) return;
     const url = Platform.select({
-      ios: `maps:0,0?q=${item.title}@${item.lat},${item.lng}`,
-      android: `geo:0,0?q=${item.lat},${item.lng}(${item.title})`,
+      ios: `maps:0,0?q=${encodeURIComponent(item.title)}@${item.lat},${item.lng}`,
+      android: `geo:0,0?q=${item.lat},${item.lng}(${encodeURIComponent(item.title)})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`,
     });
     if (url) Linking.openURL(url);
   }
@@ -205,7 +214,7 @@ export default function ItemDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <ArrowLeft size={22} color={theme.colors.text} />
@@ -281,11 +290,11 @@ export default function ItemDetailScreen() {
           {/* PICK PERMISSION SECTION */}
           {!isOwner && item.status === 'available' && (
             <View style={styles.accessSection}>
-              <Text style={styles.sectionLabel}>Entry Permission</Text>
+              <Text style={styles.sectionLabel}>Pick Permission</Text>
               {!myRequest && (
                 <TouchableOpacity style={styles.requestBtn} onPress={() => setShowAccessModal(true)}>
                   <CheckCircle2 size={18} color="#fff" />
-                  <Text style={styles.requestBtnText}>Request Permission to Pick</Text>
+                  <Text style={styles.requestBtnText}>Request Permission to Pick Fruit</Text>
                 </TouchableOpacity>
               )}
               {myRequest && (
@@ -309,7 +318,7 @@ export default function ItemDetailScreen() {
           {/* OWNER: APPROVE/REJECT REQUESTS */}
           {isOwner && pendingRequests.length > 0 && (
             <View style={styles.accessSection}>
-              <Text style={styles.sectionLabel}>Pending Entry Requests</Text>
+              <Text style={styles.sectionLabel}>Pending Pick Requests</Text>
               {pendingRequests.map(req => (
                 <View key={req.id} style={styles.pendingCard}>
                   <Text style={styles.pendingName}>{req.requester?.name || 'User'}</Text>
@@ -362,10 +371,10 @@ export default function ItemDetailScreen() {
       <Modal visible={showAccessModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Request Entry Permission</Text>
+            <Text style={styles.modalTitle}>Request Pick Permission</Text>
             <Text style={styles.modalDesc}>
               {isFree
-                ? 'This listing is free. Send a request and the owner will approve your entry.'
+                ? 'This fruit is free to pick. Send a request and the owner will approve your pick-up.'
                 : `This listing costs ${item.token_price} ◆ tokens. Choose to pay now for instant access or send a free request for the owner to approve.`}
             </Text>
             {!isFree && (
@@ -476,8 +485,23 @@ const styles = StyleSheet.create({
   starsRow: { flexDirection: 'row', gap: 2 },
   reviewComment: { fontSize: 14, color: theme.colors.text, fontFamily: theme.fonts.regular, lineHeight: 20 },
   reviewDate: { fontSize: 11, color: theme.colors.neutral[400], fontFamily: theme.fonts.regular, marginTop: 4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : undefined,
+    padding: Platform.OS === 'web' ? 20 : 0,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderRadius: Platform.OS === 'web' ? 24 : undefined,
+    maxWidth: Platform.OS === 'web' ? 480 : undefined,
+    width: '100%',
+    padding: 24,
+    paddingBottom: 36,
+  },
   modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold, marginBottom: 10 },
   modalDesc: { fontSize: 14, color: theme.colors.textMuted, fontFamily: theme.fonts.regular, lineHeight: 20, marginBottom: 20 },
   modalSubLabel: { fontSize: 13, fontWeight: '700', color: theme.colors.neutral[700], fontFamily: theme.fonts.bold, marginBottom: 8, marginTop: 12 },

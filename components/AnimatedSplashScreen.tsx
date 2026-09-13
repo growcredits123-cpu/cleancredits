@@ -34,6 +34,14 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
     // Hide the native splash screen seamlessly once this JS component mounts
     SplashScreen.hideAsync().catch(() => {});
     
+    let completed = false;
+    const safeComplete = () => {
+      if (!completed) {
+        completed = true;
+        onAnimationComplete();
+      }
+    };
+
     // 1. Logo pop-in and rotate
     logoScale.value = withSpring(1, { damping: 12, stiffness: 90 });
     logoRotation.value = withSpring(0, { damping: 10, stiffness: 80 });
@@ -54,11 +62,18 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
     
     // 4. Fade out entire screen
     containerOpacity.value = withDelay(
-      2200, 
-      withTiming(0, { duration: 600, easing: Easing.inOut(Easing.ease) }, () => {
-        runOnJS(onAnimationComplete)();
+      2000, 
+      withTiming(0, { duration: 500, easing: Easing.inOut(Easing.ease) }, (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(safeComplete)();
+        }
       })
     );
+
+    // Guaranteed fallback timer
+    const fallbackTimer = setTimeout(safeComplete, 2600);
+    return () => clearTimeout(fallbackTimer);
   }, []);
 
   const containerStyle = useAnimatedStyle(() => ({
@@ -89,8 +104,8 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
         <View style={styles.iconCircle}>
           <Image
             source={require('@/assets/images/icon.png')}
-            style={{ width: 110, height: 110, borderRadius: 28 }}
-            resizeMode="cover"
+            style={{ width: 110, height: 110 }}
+            resizeMode="contain"
           />
         </View>
         <Animated.Text style={[styles.text, textStyle]}>FruitMap</Animated.Text>
@@ -102,7 +117,7 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.primary[700],
+    backgroundColor: '#0284c7',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 99999,
@@ -113,7 +128,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: theme.colors.primary[500],
+    backgroundColor: '#38bdf8',
   },
   logoContainer: {
     alignItems: 'center',
@@ -127,6 +142,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
     ...theme.elevation.lg,
+    overflow: 'hidden',
   },
   text: {
     fontSize: 44,

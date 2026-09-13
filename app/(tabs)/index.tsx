@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Platform, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Platform, TextInput, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -80,9 +80,13 @@ export default function MapScreen() {
           setRegion(DEFAULT_REGION);
           return;
         }
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        if (!loc) {
-          loc = await Location.getLastKnownPositionAsync() as Location.LocationObject;
+        // Try getting current position first as it's more accurate
+        let loc = null;
+        try {
+          loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        } catch (e) {
+          console.warn('getCurrentPositionAsync failed, falling back to last known', e);
+          loc = await Location.getLastKnownPositionAsync();
         }
         
         if (loc) {
@@ -95,51 +99,57 @@ export default function MapScreen() {
           setRegion(newRegion);
           mapRef.current?.animateToRegion(newRegion, 1000);
         } else {
-          setError('Could not get your location.');
+          setError('Could not get your location. Using default area.');
+          setRegion(DEFAULT_REGION);
         }
       } catch (err: any) {
+        console.warn('Location permission/fetch failed:', err);
         setError('Location unavailable. Using default area.');
         setRegion(DEFAULT_REGION);
       }
     })();
   }, []);
 
+  const [showListDrawer, setShowListDrawer] = useState(false);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.greeting}>Nearby fruits, veggies, and trees</Text>
-          <Text style={styles.subtext}>
-            {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}` : 'Explore the FruitMap'}
-          </Text>
+      <View style={styles.headerWrapper}>
+        <View style={styles.header}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.greeting}>Nearby fruits, veggies, and trees</Text>
+            <Text style={styles.subtext}>
+              {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}` : 'Explore the FruitMap'}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => mutate()} disabled={isValidating}>
+            {isValidating ? (
+              <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+            ) : (
+              <RefreshCw size={18} color={theme.colors.primary[600]} />
+            )}
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => mutate()} disabled={isValidating}>
-          {isValidating ? (
-            <ActivityIndicator size="small" color={theme.colors.primary[600]} />
-          ) : (
-            <RefreshCw size={18} color={theme.colors.primary[600]} />
-          )}
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBox}>
-          <Search size={18} color={theme.colors.neutral[400]} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search e.g. Apple Tree"
-            placeholderTextColor={theme.colors.neutral[400]}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBox}>
+            <Search size={18} color={theme.colors.neutral[400]} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search e.g. Apple Tree"
+              placeholderTextColor={theme.colors.neutral[400]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          <TouchableOpacity 
+            style={[styles.filterBtn, freeOnly && styles.filterBtnActive]} 
+            onPress={() => setFreeOnly(!freeOnly)}
+          >
+            <Filter size={16} color={freeOnly ? theme.colors.primary[700] : theme.colors.neutral[500]} />
+            <Text style={[styles.filterText, freeOnly && styles.filterTextActive]}>Free</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={[styles.filterBtn, freeOnly && styles.filterBtnActive]} 
-          onPress={() => setFreeOnly(!freeOnly)}
-        >
-          <Filter size={16} color={freeOnly ? theme.colors.primary[700] : theme.colors.neutral[500]} />
-          <Text style={[styles.filterText, freeOnly && styles.filterTextActive]}>Free</Text>
-        </TouchableOpacity>
       </View>
 
       {error && (
@@ -148,18 +158,66 @@ export default function MapScreen() {
         </View>
       )}
 
-      <MapPanel
-        mapRef={mapRef}
-        region={region}
-        onRegionChange={handleRegionChange}
-        items={items}
-        onItemPress={(itemId) => router.push(`/item/${itemId}`)}
-        showsUserLocation
-      />
+      <View style={styles.mapArea}>
+        <MapPanel
+          mapRef={mapRef}
+          region={region}
+          onRegionChange={handleRegionChange}
+          items={items}
+          onItemPress={(itemId) => router.push(`/item/${itemId}`)}
+          showsUserLocation
+        />
 
-      <View style={styles.listToggle}>
-        <MapPin size={14} color={theme.colors.primary[600]} />
-        <Text style={styles.listToggleText}>{items.length} items in view</Text>
+        {showListDrawer && (
+          <View style={styles.drawerOverlay}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Harvests in this area ({items.length})</Text>
+              <TouchableOpacity style={styles.drawerCloseBtn} onPress={() => setShowListDrawer(false)}>
+                <Text style={styles.drawerCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerList}>
+              {items.length === 0 ? (
+                <Text style={styles.drawerEmpty}>No available items found in this map view.</Text>
+              ) : (
+                items.map((it) => (
+                  <TouchableOpacity
+                    key={it.id}
+                    style={styles.drawerCard}
+                    onPress={() => {
+                      setShowListDrawer(false);
+                      router.push(`/item/${it.id}`);
+                    }}
+                  >
+                    <View style={styles.drawerCardThumb}>
+                      {it.photo_url ? (
+                        <Image source={{ uri: it.photo_url }} style={styles.drawerCardImg} />
+                      ) : (
+                        <Text style={{ fontSize: 20 }}>🌿</Text>
+                      )}
+                    </View>
+                    <View style={styles.drawerCardInfo}>
+                      <Text style={styles.drawerCardTitle} numberOfLines={1}>{it.title}</Text>
+                      <Text style={styles.drawerCardDesc} numberOfLines={1}>{it.description || 'Available for picking'}</Text>
+                    </View>
+                    <View style={styles.drawerCardBadge}>
+                      <Text style={styles.drawerCardBadgeText}>
+                        {it.token_price === 0 ? 'FREE' : `${it.token_price} ◆`}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.listToggle} onPress={() => setShowListDrawer(!showListDrawer)}>
+          <MapPin size={14} color={theme.colors.primary[600]} />
+          <Text style={styles.listToggleText}>
+            {showListDrawer ? 'Hide List' : `${items.length} items in view • Browse List`}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -199,6 +257,13 @@ async function fetchItems(region: Region, searchQuery: string, freeOnly: boolean
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
+  headerWrapper: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    zIndex: 10,
+    width: '100%',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -206,7 +271,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
-    backgroundColor: theme.colors.surface,
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTextContainer: { flex: 1 },
   greeting: { fontSize: 20, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
@@ -224,10 +291,10 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingBottom: 12,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
     alignItems: 'center',
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
   },
   searchBox: {
     flex: 1,
@@ -264,6 +331,7 @@ const styles = StyleSheet.create({
   filterTextActive: { color: theme.colors.primary[700] },
   errorBar: { backgroundColor: '#fef2f2', paddingHorizontal: 16, paddingVertical: 8 },
   errorText: { color: theme.colors.error, fontSize: 12, fontFamily: theme.fonts.regular },
+  mapArea: { flex: 1, position: 'relative' },
   listToggle: {
     position: 'absolute',
     bottom: 16,
@@ -271,15 +339,83 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
     shadowColor: theme.colors.neutral[900],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    gap: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    zIndex: 100,
   },
-  listToggleText: { fontSize: 13, fontWeight: '600', color: theme.colors.text, fontFamily: theme.fonts.bold },
+  listToggleText: { fontSize: 13, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
+  drawerOverlay: {
+    position: 'absolute',
+    bottom: 60,
+    left: Platform.OS === 'web' ? 'auto' : 16,
+    right: Platform.OS === 'web' ? 24 : 16,
+    width: Platform.OS === 'web' ? 380 : undefined,
+    maxHeight: 380,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    zIndex: 90,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  drawerTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
+  drawerCloseBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  drawerCloseText: { fontSize: 13, color: theme.colors.primary[600], fontWeight: '600' },
+  drawerScroll: { maxHeight: 300 },
+  drawerList: { paddingTop: 8, gap: 8 },
+  drawerEmpty: { textAlign: 'center', color: theme.colors.textMuted, paddingVertical: 20, fontSize: 13 },
+  drawerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.neutral[50],
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  drawerCardThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.neutral[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginRight: 10,
+  },
+  drawerCardImg: { width: '100%', height: '100%' },
+  drawerCardInfo: { flex: 1, marginRight: 8 },
+  drawerCardTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },
+  drawerCardDesc: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
+  drawerCardBadge: {
+    backgroundColor: theme.colors.primary[50],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[100],
+  },
+  drawerCardBadgeText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary[700] },
 });
