@@ -27,7 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const url = Linking.useURL();
 
   useEffect(() => {
-    const rawUrl = url || (typeof window !== 'undefined' ? window.location.href : null);
+    const rawUrl =
+      url || (Platform.OS === 'web' && typeof window !== 'undefined' && window.location ? window.location.href : null);
     if (!rawUrl) return;
     
     const parseUrl = async () => {
