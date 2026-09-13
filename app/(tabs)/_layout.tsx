@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { View, StyleSheet, ActivityIndicator, Platform, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform, Text, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Map, Plus, Wallet, MessageSquare, User as UserIcon, Recycle, ShieldAlert } from 'lucide-react-native';
 import { useState } from 'react';
@@ -18,17 +18,27 @@ export default function TabLayout() {
 
   // Check global settings
   const { data: globalSettings } = useSWR('global_settings', async () => {
-    const { data } = await supabase.from('app_events').select('payload').eq('event_type', 'global_settings').order('created_at', { ascending: false }).limit(1).maybeSingle();
-    return data?.payload || {};
+    try {
+      const { data } = await supabase
+        .from('app_events')
+        .select('payload')
+        .eq('event_type', 'global_settings')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.payload || {};
+    } catch {
+      return {};
+    }
   });
 
   const requireId = globalSettings?.require_id === true;
-  const showIdBlocker = requireId && profile && profile.id_verified === false;
+  const showIdBlocker = Boolean(requireId && profile && profile.id_verified === false);
 
   async function handleUploadID() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') return alert('Permission required');
+      if (status !== 'granted') return Alert.alert('Permission Required', 'Permission to access photos is required.');
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
       if (result.canceled || !result.assets[0].base64) return;
       
@@ -40,14 +50,10 @@ export default function TabLayout() {
       const { data: { publicUrl } } = supabase.storage.from('verification-docs').getPublicUrl(filePath);
       await supabase.from('id_verifications').insert({ user_id: session!.user.id, id_photo_url: publicUrl, status: 'pending' });
       
-      // We will optimisticly mark them as verified so they can use the app while pending
-      // In a real app, we might want them to wait for approval. Let's just set a local state or update their profile.
       await supabase.from('users').update({ id_verified: true }).eq('id', session!.user.id);
-      alert('ID submitted successfully! You may now use the app.');
-      // A reload or state update would happen via auth context, but setting profile isn't directly exposed.
-      // The auth listener might pick it up, or we can just force a reload.
+      Alert.alert('Success', 'ID submitted successfully! You may now use the app.');
     } catch (e: any) {
-      alert(e.message);
+      Alert.alert('Error', e?.message || 'Failed to submit ID.');
     } finally {
       setUploadingId(false);
     }

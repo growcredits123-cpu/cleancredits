@@ -1,39 +1,23 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Platform, Image } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  withSpring,
-  withSequence,
-  runOnJS,
-  Easing,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Dimensions, Platform, Image, Text, Animated } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { theme } from '@/lib/theme';
-
-const { width, height } = Dimensions.get('window');
 
 interface Props {
   onAnimationComplete: () => void;
 }
 
 export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
-  const containerOpacity = useSharedValue(1);
-  const logoScale = useSharedValue(0.3);
-  const logoRotation = useSharedValue(-15);
-  const textOpacity = useSharedValue(0);
-  const textTranslateY = useSharedValue(30);
-  const rippleScale = useSharedValue(0);
-  const rippleOpacity = useSharedValue(0.5);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(0.4)).current;
+  const textOpacityAnim = useRef(new Animated.Value(0)).current;
+  const textTranslateYAnim = useRef(new Animated.Value(20)).current;
+  const rippleScaleAnim = useRef(new Animated.Value(0.5)).current;
+  const rippleOpacityAnim = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
-    // Hide the native splash screen seamlessly once this JS component mounts
     SplashScreen.hideAsync().catch(() => {});
-    
+
     let completed = false;
     const safeComplete = () => {
       if (!completed) {
@@ -42,73 +26,92 @@ export function AnimatedSplashScreen({ onAnimationComplete }: Props) {
       }
     };
 
-    // 1. Logo pop-in and rotate
-    logoScale.value = withSpring(1, { damping: 12, stiffness: 90 });
-    logoRotation.value = withSpring(0, { damping: 10, stiffness: 80 });
-    
-    // 2. Ripple effect behind the logo
-    rippleScale.value = withDelay(
-      200,
-      withTiming(4, { duration: 800, easing: Easing.out(Easing.ease) })
-    );
-    rippleOpacity.value = withDelay(
-      200,
-      withTiming(0, { duration: 800, easing: Easing.out(Easing.ease) })
-    );
+    // 1. Entrance animation (scale + ripple + text)
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rippleScaleAnim, {
+        toValue: 3.5,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rippleOpacityAnim, {
+        toValue: 0,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textOpacityAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 250,
+        useNativeDriver: true,
+      }),
+      Animated.spring(textTranslateYAnim, {
+        toValue: 0,
+        friction: 6,
+        delay: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-    // 3. Text slides up and fades in
-    textOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
-    textTranslateY.value = withDelay(400, withSpring(0, { damping: 14, stiffness: 100 }));
-    
-    // 4. Fade out entire screen
-    containerOpacity.value = withDelay(
-      2000, 
-      withTiming(0, { duration: 500, easing: Easing.inOut(Easing.ease) }, (finished) => {
-        'worklet';
-        if (finished) {
-          runOnJS(safeComplete)();
-        }
-      })
-    );
+    // 2. Exit animation after 1.8s
+    const exitTimer = setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        safeComplete();
+      });
+    }, 1800);
 
-    // Guaranteed fallback timer
-    const fallbackTimer = setTimeout(safeComplete, 2600);
-    return () => clearTimeout(fallbackTimer);
+    // 3. Absolute fallback safety timer
+    const fallbackTimer = setTimeout(safeComplete, 2400);
+
+    return () => {
+      clearTimeout(exitTimer);
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
-  const containerStyle = useAnimatedStyle(() => ({
-    opacity: containerOpacity.value,
-  }));
-
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: logoScale.value },
-      { rotate: `${logoRotation.value}deg` }
-    ],
-  }));
-
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value,
-    transform: [{ translateY: textTranslateY.value }],
-  }));
-
-  const rippleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: rippleScale.value }],
-    opacity: rippleOpacity.value,
-  }));
-
   return (
-    <Animated.View style={[styles.container, containerStyle]}>
-      <Animated.View style={[styles.ripple, rippleStyle]} />
-      <Animated.View style={[styles.logoContainer, logoStyle]}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <Animated.View
+        style={[
+          styles.ripple,
+          {
+            opacity: rippleOpacityAnim,
+            transform: [{ scale: rippleScaleAnim }],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.logoContainer,
+          {
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
         <View style={styles.iconCircle}>
           <Image
             source={require('@/assets/images/icon.png')}
-            style={{ width: 110, height: 110 }}
+            style={{ width: 100, height: 100 }}
             resizeMode="contain"
           />
         </View>
-        <Animated.Text style={[styles.text, textStyle]}>FruitMap</Animated.Text>
+        <Animated.View
+          style={{
+            opacity: textOpacityAnim,
+            transform: [{ translateY: textTranslateYAnim }],
+          }}
+        >
+          <Text style={styles.text}>FruitMap</Text>
+        </Animated.View>
       </Animated.View>
     </Animated.View>
   );
@@ -140,18 +143,19 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     ...theme.elevation.lg,
     overflow: 'hidden',
   },
   text: {
-    fontSize: 44,
+    fontSize: 40,
     color: '#ffffff',
-    letterSpacing: -1.5,
-    fontFamily: Platform.OS === 'ios' ? 'Inter-Bold' : 'Inter-Bold',
+    letterSpacing: -1,
+    fontFamily: theme.fonts.bold,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowColor: 'rgba(0,0,0,0.15)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  }
+    textShadowRadius: 6,
+  },
 });
+

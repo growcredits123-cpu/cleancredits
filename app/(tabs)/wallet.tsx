@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, TextInput, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, TextInput, ActivityIndicator, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, ArrowDownCircle, ArrowUpCircle, Gift } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
@@ -167,11 +167,11 @@ export default function WalletScreen() {
             <Text style={styles.modalTitle}>Purchase tokens</Text>
             <Text style={styles.modalLabel}>Select a package (Demo)</Text>
             
-            <TouchableOpacity style={styles.packageBtn} onPress={() => { setShowPurchase(false); alert('In-app purchases coming soon!'); }}>
+            <TouchableOpacity style={styles.packageBtn} onPress={() => { setShowPurchase(false); Alert.alert('Notice', 'In-app purchases coming soon!'); }}>
               <Text style={styles.packageText}>100 Tokens - $4.99</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.packageBtn} onPress={() => { setShowPurchase(false); alert('In-app purchases coming soon!'); }}>
+            <TouchableOpacity style={styles.packageBtn} onPress={() => { setShowPurchase(false); Alert.alert('Notice', 'In-app purchases coming soon!'); }}>
               <Text style={styles.packageText}>500 Tokens - $19.99</Text>
             </TouchableOpacity>
 
