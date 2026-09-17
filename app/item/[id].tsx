@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, MapPin, ArrowLeft, Package, Trash2, Navigation, CheckCircle2, Clock, Coins } from 'lucide-react-native';
+import { Star, MapPin, ArrowLeft, Package, Trash2, Navigation, CheckCircle2, Clock, Coins, ZoomIn } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { theme } from '@/lib/theme';
+import { ImageViewerModal } from '@/components/ImageViewerModal';
 import type { Item, User } from '@/lib/types';
 
 type Review = {
@@ -36,6 +37,7 @@ export default function ItemDetailScreen() {
   const [owner, setOwner] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showZoomModal, setShowZoomModal] = useState(false);
 
   // Reviews
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -228,7 +230,17 @@ export default function ItemDetailScreen() {
 
         <View style={styles.imageWrap}>
           {item.photo_url ? (
-            <Image source={{ uri: item.photo_url }} style={styles.image} />
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowZoomModal(true)}
+              style={styles.imageTouchWrap}
+            >
+              <Image source={{ uri: item.photo_url }} style={styles.image} resizeMode="cover" />
+              <View style={styles.zoomBadge}>
+                <ZoomIn size={14} color="#ffffff" />
+                <Text style={styles.zoomBadgeText}>Expand & Zoom</Text>
+              </View>
+            </TouchableOpacity>
           ) : (
             <View style={[styles.image, styles.imagePlaceholder]}>
               <Package size={48} color={theme.colors.neutral[300]} />
@@ -426,6 +438,15 @@ export default function ItemDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {item.photo_url && (
+        <ImageViewerModal
+          visible={showZoomModal}
+          imageUri={item.photo_url}
+          title={item.title}
+          onClose={() => setShowZoomModal(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -437,7 +458,28 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   deleteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   imageWrap: { width: '100%', height: 280, backgroundColor: theme.colors.neutral[100] },
+  imageTouchWrap: { width: '100%', height: '100%', position: 'relative' },
   image: { width: '100%', height: '100%' },
+  zoomBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  zoomBadgeText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: theme.fonts.bold,
+  },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   body: { padding: 20 },
   title: { fontSize: 24, fontWeight: '700', color: theme.colors.text, fontFamily: theme.fonts.bold },

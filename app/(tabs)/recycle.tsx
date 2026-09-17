@@ -12,6 +12,7 @@ import type { RecyclingSpot } from '@/lib/types';
 import { decode } from 'base64-arraybuffer';
 import useSWR from 'swr';
 import { LocationPickerMap, LocationPickerRef } from '@/components/LocationPickerMap';
+import { ImageViewerModal } from '@/components/ImageViewerModal';
 
 export default function RecycleScreen() {
   const { session } = useAuth();
@@ -38,6 +39,7 @@ export default function RecycleScreen() {
   const [success, setSuccess] = useState(false);
   const [locating, setLocating] = useState(false);
   const [mapScrollEnabled, setMapScrollEnabled] = useState(true);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ uri: string; title: string } | null>(null);
 
   useEffect(() => {
     const channel = supabase
@@ -200,7 +202,14 @@ export default function RecycleScreen() {
             <View style={styles.spotList}>
               {spots.map((spot) => (
                 <View key={spot.id} style={styles.spotCard}>
-                  {spot.photo_url && <Image source={{ uri: spot.photo_url }} style={styles.spotPhoto} />}
+                  {spot.photo_url && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => setSelectedPhoto({ uri: spot.photo_url!, title: `Recycling Spot (${spot.lat.toFixed(4)}, ${spot.lng.toFixed(4)})` })}
+                    >
+                      <Image source={{ uri: spot.photo_url }} style={styles.spotPhoto} />
+                    </TouchableOpacity>
+                  )}
                   <View style={styles.spotBody}>
                     <View style={styles.spotMetaRow}>
                       <MapPin size={14} color={theme.colors.primary[600]} />
@@ -284,7 +293,14 @@ export default function RecycleScreen() {
           </View>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+
+      <ImageViewerModal
+        visible={!!selectedPhoto}
+        imageUri={selectedPhoto?.uri || null}
+        title={selectedPhoto?.title}
+        onClose={() => setSelectedPhoto(null)}
+      />
     </SafeAreaView>
   );
 }
